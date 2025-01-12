@@ -1,15 +1,12 @@
 import { View, Text,Image,StyleSheet, TouchableOpacity } from 'react-native'
-import React from 'react'
+import React, { useEffect } from 'react'
 import { Colors } from '@/constants/Colors'
 import { Redirect, useRouter } from 'expo-router'
-import { useUser } from '@clerk/clerk-expo';
+import { useAuth, useUser } from '@clerk/clerk-expo';
 
 export default function Index() {
 
   const router=useRouter();
-
-  const {user}=useUser;
-
   return (
     <View >
       {
@@ -44,7 +41,7 @@ export default function Index() {
         </Text>
   
         <TouchableOpacity style={styles.button}
-           onPress={() => router.push('login')}
+           onPress={() => router.push('(public)/login')}
           // onPress={() => router.push('/(tabs)/weather')}
 
         >
