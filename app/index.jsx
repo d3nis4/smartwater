@@ -37,8 +37,8 @@ export default function Index() {
             marginTop:20
         }}
         >
-            Esti pregatit pentru o gradina inteligentă? Automatizează irigarea grădinii econosind timp și apă.
-        </Text>
+            Ești pregătit pentru o grădina inteligentă? Automatizează irigarea grădinii eonomisind timp și apă.
+           </Text>
   
         <TouchableOpacity style={styles.button}
            onPress={() => router.push('(public)/login')}
@@ -51,7 +51,7 @@ export default function Index() {
                 fontFamily:'poppins',
                 fontSize:17
            }}>
-                Conecteaza-te 
+                Conectează-te 
             </Text>
         </TouchableOpacity>
 
@@ -71,7 +71,7 @@ const styles = StyleSheet.create({
   },
   button:{
     padding:15,
-    backgroundColor:Colors.PRIMARY,
+    backgroundColor:Colors.GREEN,
     borderRadius:99,
     marginTop:'15%'
   }

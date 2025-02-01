@@ -10,6 +10,7 @@ import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage'; // Import AsyncStorage
 import AntDesign from '@expo/vector-icons/AntDesign';
 import TomorrowWeather from './app/components/TomorrowWeather';
+import { Colors } from './constants/Colors';
 
 
 export default function Weather() {
@@ -163,7 +164,7 @@ export default function Weather() {
             <TouchableOpacity
               onPress={() => setSelectedDay('TOMORROW')}
               style={{
-                backgroundColor: selectedDay === 'TOMORROW' ? '#0bb3b2' : '#333',
+                backgroundColor: selectedDay === 'TOMORROW' ? Colors.GREEN : '#333',
                 paddingHorizontal: 20,
                 paddingVertical: 10,
                 borderRadius: 20,
@@ -308,7 +309,7 @@ export default function Weather() {
             }}>
               <MaterialCommunityIcons name="weather-snowy" color="white" size={22} style={{ marginRight: 10 }} />
               <View>
-                <Text style={{ color: 'white', fontSize: 14, fontFamily: 'poppins-bold' }}>
+                <Text style={{ marginLeft:"-10px" ,color: 'white', fontSize: 14, fontFamily: 'poppins-bold' }}>
                   Șanse de ninsoare
                 </Text>
                 <Text style={{ color: 'white', fontSize: 13, fontWeight: 'bold', fontFamily: 'poppins' }}>

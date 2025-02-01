@@ -38,9 +38,18 @@ const TabsPage = () => {
       <Tabs.Screen
         name="weather"
         options={{
-          headerTitle: 'weather',
+          headerTitle: 'weather2',
           tabBarIcon: ({ color, size }) => <Feather name="sun" size={24} color={color} />,
           tabBarLabel: 'weather',
+        }}
+        redirect={!isSignedIn}
+      />
+       <Tabs.Screen
+        name="weather2"
+        options={{
+          headerTitle: 'weather2',
+          tabBarIcon: ({ color, size }) => <Feather name="sun" size={24} color={color} />,
+          tabBarLabel: 'weather2',
         }}
         redirect={!isSignedIn}
       />

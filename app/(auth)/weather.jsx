@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Image, SafeAreaView, ScrollView, StatusBar, StyleSheet } from 'react-native';
+import { View, Text, Dimensions, TextInput, TouchableOpacity, Image, SafeAreaView, ScrollView, StatusBar, StyleSheet } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Entypo from '@expo/vector-icons/Entypo';
 import { fetchWeatherForecast, fetchLocations } from '../../api/weather';
@@ -9,6 +9,9 @@ import * as Location from 'expo-location'; // For location services
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage'; // Import AsyncStorage
 import AntDesign from '@expo/vector-icons/AntDesign';
+import { LineChart } from 'react-native-chart-kit';
+import { ScatterChart } from 'react-native-chart-kit';
+import { Colors } from '../../constants/Colors';
 
 
 export default function Weather() {
@@ -19,7 +22,7 @@ export default function Weather() {
   const [locations, setLocations] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [hourlyData, setHourlyData] = useState([]);
+  // const [hourlyData, setHourlyData] = useState([]);
   const [selectedDay, setSelectedDay] = useState('TODAY'); // Default to TODAY
 
 
@@ -78,10 +81,10 @@ export default function Weather() {
   const loadLastCity = async () => {
     const savedCity = await AsyncStorage.getItem('lastCity');
     if (savedCity) {
-      await fetchWeatherData(savedCity); 
+      await fetchWeatherData(savedCity);
       setSearchQuery(savedCity);
     } else {
-      
+
       await fetchWeatherData('Bucuresti');
       setSearchQuery('Bucuresti');
     }
@@ -103,6 +106,35 @@ export default function Weather() {
   };
 
 
+  // grafic vreme 
+
+  const hourlyData = weather?.forecast?.forecastday[0]?.hour || [];
+
+  // Extragem orele și temperaturile pentru axele graficului
+  const labels = hourlyData.map((hour) => {
+    const date = new Date(hour.time);
+    return `${date.getHours()}:00`; // Afișăm orele
+  });
+
+  const temperatures = hourlyData.map((hour) => hour.temp_c); // Temperatura pe ore
+
+  // Configurarea graficului
+  const chartConfig = {
+    backgroundColor: '#1e2923',
+    backgroundGradientFrom: '#08130D',
+    backgroundGradientTo: '#1e2923',
+    decimalPlaces: 1,
+    color: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
+    labelColor: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
+    style: {
+      borderRadius: 16,
+    },
+    propsForDots: {
+      r: '4',
+      strokeWidth: '2',
+      stroke: '#ffa726',
+    },
+  };
   return (
 
     <ScrollView style={{ flex: 1, backgroundColor: '#255' }}>
@@ -119,10 +151,10 @@ export default function Weather() {
       <StatusBar style="light" />
       {/* Search Bar */}
       <View style={{ height: '7%', marginHorizontal: 16, zIndex: 50, marginTop: 20 }}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#333', borderRadius: 50, paddingHorizontal: 10 }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderColor: "#333",  borderWidth: 1, borderStyle: "solid" ,borderRadius: 50, paddingHorizontal: 10 }}>
           <TextInput
             placeholder="Search city"
-            style={{ flex: 1, paddingLeft: 16, height: 50, color: 'white', fontSize: 16 }}
+            style={{ flex: 1, paddingLeft: 16, height: 50, color: 'black', fontSize: 16 }}
             onChangeText={handleSearch}
             value={searchQuery}
           />
@@ -142,7 +174,7 @@ export default function Weather() {
         )}
       </View>
 
-      {/* BUTOANE  */}
+      {/* BUTOANE azi maine forecast */}
       <View style={{ flexDirection: 'row', justifyContent: 'space-around', marginTop: -25 }}>
         <TouchableOpacity
           onPress={() => setSelectedDay('TODAY')}
@@ -182,7 +214,7 @@ export default function Weather() {
       </View>
 
       {/* Button  location */}
-      <View style={{ marginTop: 20, marginLeft: 'auto', marginRight: 21, zIndex:100}}>
+      <View style={{ marginTop: 20, marginLeft: 'auto', marginRight: 21, zIndex: 100 }}>
         <TouchableOpacity onPress={handleLocationButtonPress} style={styles.locationButton}>
           <Entypo name="location" size={20} color="black" />
         </TouchableOpacity>
@@ -220,7 +252,7 @@ export default function Weather() {
 
           {/* Condiție vreme */}
           <View style={{ marginTop: -25 }}>
-            <Text style={{ color: 'black', fontSize: 18, letterSpacing: 1.5, marginBottom: 10,marginTop:25 }}>
+            <Text style={{ color: 'black', fontFamily: "poppins-bold",fontSize: 18, letterSpacing: 1.5, marginBottom: 10, marginTop: 25 }}>
               {current?.condition?.text}
             </Text>
 
@@ -232,7 +264,7 @@ export default function Weather() {
 
           {/* Alerte meteo */}
           {weather?.alerts && weather.alerts.length > 0 ? (
-            <View style={{ marginTop: 20, backgroundColor: '#f8d7da', padding: 10, borderRadius: 10 }}>
+            <View style={{  backgroundColor: '#f8d7da', padding: 10, borderRadius: 10 }}>
               <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#721c24' }}>Alerte meteo:</Text>
 
               {/* Log alerte in consolă */}
@@ -257,11 +289,11 @@ export default function Weather() {
 
 
           {/* Weather Stats */}
-          <View style={{ flexDirection: 'row', justifyContent: 'space-around', marginHorizontal: 1, padding: 1,marginTop:10 }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-around', marginHorizontal: 1, padding: 1, marginTop: 10 }}>
             {/* Viteza vântului */}
             <View style={{
               flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start',
-              borderWidth: 1, borderRadius: 15, height: 60, width: 170, backgroundColor: '#333333', padding: 7
+               borderRadius: 15, height: 60, width: 170, backgroundColor: Colors.GREEN, padding: 7
             }}>
               <Image source={require('../../assets/icons/wind.png')} style={{ height: 20, width: 20, marginRight: 10 }} />
               <View>
@@ -277,7 +309,7 @@ export default function Weather() {
             {/* Umiditatea */}
             <View style={{
               flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start',
-              borderWidth: 1, borderRadius: 15, height: 60, width: 170, backgroundColor: '#333333', padding: 7
+               borderRadius: 15, height: 60, width: 170, backgroundColor: Colors.GREEN, padding: 7
             }}>
               <Image source={require('../../assets/icons/drop.png')} style={{ height: 20, width: 20, marginRight: 10 }} />
               <View>
@@ -292,10 +324,10 @@ export default function Weather() {
           </View>
 
           <View style={{ flexDirection: 'row', justifyContent: 'space-around', marginHorizontal: 1, padding: 1, marginTop: 5 }}>
-            {/* Indice uv */}
+            {/* Vant+umiditate */}
             <View style={{
               flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start',
-              borderWidth: 1, borderRadius: 15, height: 60, width: 170, backgroundColor: '#333333', padding: 10
+             borderRadius: 15, height: 60, width: 170,backgroundColor: Colors.GREEN, padding: 10
             }}>
               <MaterialCommunityIcons name="shield-sun-outline" color="white" size={22} style={{ marginRight: 10 }} />
               <View>
@@ -308,10 +340,10 @@ export default function Weather() {
               </View>
             </View>
 
-            {/* Procent nori */}
+            {/* Uv + Acoperire nori */}
             <View style={{
-              flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start',
-              borderWidth: 1, borderRadius: 15, height: 60, width: 170, backgroundColor: '#333333', padding: 10
+              flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start'
+              , borderRadius: 15, height: 60, width: 170, backgroundColor: Colors.GREEN, padding: 10
             }}>
               <AntDesign name="cloudo" size={24} color="white" style={{ marginRight: 10 }} />
               <View>
@@ -326,10 +358,11 @@ export default function Weather() {
           </View>
 
           <View style={{ flexDirection: 'row', justifyContent: 'space-around', marginHorizontal: 1, padding: 1, marginTop: 5 }}>
-            {/* Indice uv */}
+
+            {/* Presiune + ninsoare */}
             <View style={{
               flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start',
-              borderWidth: 1, borderRadius: 15, height: 60, width: 170, backgroundColor: '#333333', padding: 10
+               borderRadius: 15, height: 60, width: 170, backgroundColor: Colors.GREEN, padding: 10
             }}>
               <Image source={require('../../assets/icons/pressure.png')} style={{ height: 20, width: 20, marginRight: 10, color: 'white' }} />
               <View>
@@ -345,7 +378,7 @@ export default function Weather() {
             {/* Procent nori */}
             <View style={{
               flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start',
-              borderWidth: 1, borderRadius: 15, height: 60, width: 170, backgroundColor: '#333333', padding: 10
+               borderRadius: 15, height: 60, width: 170, backgroundColor: Colors.GREEN, padding: 10
             }}>
               <MaterialCommunityIcons name="weather-snowy" color="white" size={22} style={{ marginRight: 10 }} />
               <View>
@@ -358,6 +391,8 @@ export default function Weather() {
               </View>
             </View>
           </View>
+          {/* ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////   */}
+
 
           {/* Hourly Preicip for Today */}
           <View style={{ marginTop: 20 }}>
@@ -369,7 +404,7 @@ export default function Weather() {
                 <View
                   key={index}
                   style={{
-                    backgroundColor: '#333',
+                    backgroundColor: Colors.PRIMARY,
                     padding: 10,
                     marginHorizontal: 5,
                     borderRadius: 10,
@@ -377,20 +412,60 @@ export default function Weather() {
                     width: 100, // Am mărit lățimea pentru a adăuga mai multe informații
                   }}
                 >
-                  <Text style={{ color: 'white', fontSize: 14 }}>
+                  <Text style={{ color: 'black', fontSize: 14 }}>
                     {new Date(hour.time).getHours()}:00
                   </Text>
                   <Image
                     source={{ uri: `https:${hour.condition.icon}` }}
                     style={{ width: 40, height: 40, marginVertical: 5 }}
                   />
-                  <Text style={{ color: 'white', fontSize: 14 }}>{hour.temp_c}°C</Text>
+                  <Text style={{ color: 'black', fontSize: 14 }}>{hour.temp_c}°C</Text>
 
 
                 </View>
               ))}
             </ScrollView>
+
+            {/* Graficul vremii  */}
+
+            <View style={{ marginTop: 20, borderRadius:20 }}>
+              <Text style={{ color: 'white', fontSize: 20, fontWeight: 'bold', marginBottom: 10 }}>
+                Graficul temperaturilor
+              </Text>
+
+              {/* ScrollView pentru grafic */}
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={{ marginHorizontal: 10 }}
+              >
+                {/* Graficul pe ore */}
+                <LineChart
+                  data={{
+                    labels, // Orele
+                    datasets: [
+                      {
+                        data: temperatures, // Temperatura pe ore
+                      },
+                    ],
+                  }}
+                  width={Dimensions.get('window').width * 2} // Lățimea graficului pentru a permite derularea
+                  height={220} // Înălțimea graficului
+                  chartConfig={chartConfig}
+                  bezier // Efect linie curbată
+                  style={{
+                    marginVertical: 8,
+                    borderRadius: 16,
+                  }}
+                />
+              </ScrollView>
+            </View>
+
+
           </View>
+
+
+
           <View style={{ marginTop: 20 }}>
             <Text style={{ color: 'white', fontSize: 20, fontWeight: 'bold', marginBottom: 10 }}>
               Cantitate ploaie
@@ -456,8 +531,6 @@ export default function Weather() {
             </ScrollView>
           </View>
 
-
-
           <View style={{ flexDirection: 'row', justifyContent: 'space-around', marginHorizontal: 1, padding: 1, marginTop: 5, marginBottom: 50 }}>
             {/* Răsăritul soarelui */}
             <View style={{
@@ -498,6 +571,7 @@ export default function Weather() {
     </ScrollView>
   );
 }
+
 
 const styles = StyleSheet.create({
   locationButton: {

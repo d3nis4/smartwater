@@ -71,7 +71,7 @@ const Login = () => {
   return (
     <View style={styles.loginWrap}>
       <View style={styles.loginHtml}>
-        <Text style={styles.loginTitle}>Hai sa ne conectam</Text>
+        <Text style={styles.loginTitle}>Hai să ne conectăm</Text>
 
         <View style={styles.loginForm}>
           {/* Email input */}
@@ -152,7 +152,7 @@ const Login = () => {
                 borderRadius: 25,
                 alignItems: 'center',
               }}>
-                <Text style={styles.link}>Inregistreaza-te</Text>
+                <Text style={styles.link}>Înregistrează-te</Text>
               </Pressable>
             </Link>
 
