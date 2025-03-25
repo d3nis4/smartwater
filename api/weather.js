@@ -1,35 +1,23 @@
-import axios from 'axios';
 import { apiKey } from '../constants';
 
-const forecastEndpoint=params=>`http://api.weatherapi.com/v1/forecast.json?key=${apiKey}&q=${params.cityName}&days=5&aqi=yes&alerts=yes&lang=ro`
-const locationsEndpoint=params=>`http://api.weatherapi.com/v1/search.json?key=${apiKey}&q=${params.cityName}&hours=24&lang=ro`;
-const hourlyForecastEndpoint = params => forecastEndpoint(params);
-
-
-
-const apiCAll = async (endpoint) => {
-    const options = {
-        method: 'GET',
-        url: endpoint
-    }
-    try {
-        const response = await axios.request(options);
-        console.log("API response:", response.data);
-        return response.data;
-    } catch (err) {
-        console.error('API call failed:', err.message);
-        throw new Error('Failed to fetch data from WeatherAPI.');
-    }
-}
-
-export const fetchHourlyForecast = params => {
-    return apiCAll(hourlyForecastEndpoint(params));
-  }
+// Fetch locations based on city name
+export const fetchLocations = async (cityName) => {
+  const response = await fetch(`http://api.openweathermap.org/geo/1.0/direct?q=${cityName}&limit=5&appid=${apiKey}`);
+  const data = await response.json();
   
+  return data;
+};
 
-export const fetchWeatherForecast = params=>{
-    return apiCAll(forecastEndpoint(params));
-}
-export const fetchLocations = params=>{
-    return apiCAll(locationsEndpoint(params));
-}
+// Fetch weather data based on city name
+export const fetchWeatherForecast = async (cityName) => {
+  const response = await fetch(`https://api.openweathermap.org/data/2.5/forecast?q=${cityName}&appid=${apiKey}`);
+  const data = await response.json();
+  return data;
+};
+
+// Fetch weather data using latitude and longitude
+export const fetchWeatherByCoordinates = async (lat, lon) => {
+  const response = await fetch(`https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&appid=${apiKey}`);
+  const data = await response.json();
+  return data;
+};

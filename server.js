@@ -7,7 +7,7 @@ const app = express();
 app.use(cors());
 
 // Creați o instanță SerialPort
-const port = new SerialPort({ path: "COM4", baudRate: 9600 });
+const port = new SerialPort({ path: "COM3", baudRate: 9600 });
 const parser = port.pipe(new ReadlineParser({ delimiter: "\n" }));
 
 let moistureValue = 0;
@@ -42,7 +42,7 @@ app.get("/pump/on", (req, res) => {
 
 // Endpoint pentru a opri pompa
 app.get("/pump/off", (req, res) => {
-  port.write("OFF/n", (err) => {
+  port.write("OFF\n", (err) => {
     if (err) {
       return res.status(500).send({ status: 'Error sending command to Arduino', error: err.message });
     }
@@ -53,5 +53,5 @@ app.get("/pump/off", (req, res) => {
 
 // Pornirea serverului
 app.listen(3000, () => {
-  console.log("Server running on http://192.168.1.131:3000");
+  console.log("Server running on http://192.168.0.158:3000");
 });

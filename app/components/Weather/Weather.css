@@ -1,0 +1,16 @@
+*{
+    margin:0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: "poppins";
+}
+
+
+body::before{
+    content: "";
+    position: absolute;
+    width: 100%;
+    height: 100dvh;
+    background: rgb(0,0,0,0.15);
+    backdrop-filter: blur(15px);
+}

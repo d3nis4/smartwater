@@ -38,10 +38,10 @@ const InitialLayout = () =>{
 
     const inTabsGroup = segments[0] === '(auth)';
 
-    if(isSignedIn && !inTabsGroup){
+    if(isSignedIn){
       router.replace('/home');
     }else if(!isSignedIn){
-      router.replace('/login');
+      router.replace('/'); //ma redirectioneaza pe pagina de intampinare
     }
     console.log('isSignedIn',isSignedIn);
   },[isSignedIn]);

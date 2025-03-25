@@ -13,8 +13,9 @@ const Home = () => {
   // Funcție pentru a trimite cererea de pornire a pompei
   const handlePumpOn = async () => {
     try {
-      const response = await fetch("http://192.168.1.131:3000/pump/on");
-      const data = await response.json();
+      const response = await fetch("http://192.168.0.158:3000/pump/on");
+      
+    
       console.log("Pump turned on:", data);
     } catch (error) {
       console.error("Error turning on pump:", error);
@@ -24,7 +25,7 @@ const Home = () => {
   // Funcție pentru a trimite cererea de oprire a pompei
   const handlePumpOff = async () => {
     try {
-      const response = await fetch("http://192.168.1.131:3000/pump/off");
+      const response = await fetch("http://192.168.0.158:3000/pump/off");
       const data = await response.json();
       console.log("Pump turned off:", data);
     } catch (error) {
@@ -32,24 +33,24 @@ const Home = () => {
     }
   };
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        console.log("Fetching moisture data...");
-        const response = await fetch("http://192.168.1.131:3000/moisture");
+  // useEffect(() => {
+  //   const fetchData = async () => {
+  //     try {
+  //       console.log("Fetching moisture data...");
+  //       const response = await fetch("http://192.168.0.158:3000/moisture");
 
-        const data = await response.json();
-        console.log("Moisture data received:", data);
-        setMoisture(data.moisture);
-      } catch (error) {
-        setError("Failed to fetch data");
-        console.error("Error fetching data:", error);
-      }
-    };
+  //       const data = await response.json();
+  //       console.log("Moisture data received:", data);
+  //       setMoisture(data.moisture);
+  //     } catch (error) {
+  //       setError("Failed to fetch data");
+  //       console.error("Error fetching data:", error);
+  //     }
+  //   };
 
-    // const interval = setInterval(fetchData, 10000); // Fetch data every 6 seconds
-    // return () => clearInterval(interval);
-  }, []);
+  //    const interval = setInterval(fetchData, 0); // Fetch data every 6 seconds
+  //    return () => clearInterval(interval);
+  // }, []);
 
   return (
     <View>
