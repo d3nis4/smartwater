@@ -6,12 +6,15 @@
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "SmartWater",
-    "platforms": ["ios", "android"],
+    "platforms": [
+      "ios",
+      "android"
+    ],
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "ios.bundleIdentifier":"com.anonymous.SmartWater"
+      "ios.bundleIdentifier": "com.anonymous.SmartWater"
     },
     "android": {
       "adaptiveIcon": {
@@ -27,11 +30,14 @@
     },
     "plugins": [
       "expo-router",
-      ["expo-build-properties",{
-        "ios":{
-          "useFrameworks":"static"
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "useFrameworks": "static"
+          }
         }
-      }],
+      ],
       [
         "expo-splash-screen",
         {
@@ -43,7 +49,8 @@
       ],
       "expo-font",
       "@react-native-firebase/app",
-      "@react-native-firebase/auth"
+      "@react-native-firebase/auth",
+      "react-native-background-fetch"
     ],
     "experiments": {
       "typedRoutes": true

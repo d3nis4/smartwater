@@ -13,7 +13,7 @@ const Home = () => {
   // Funcție pentru a trimite cererea de pornire a pompei
   const handlePumpOn = async () => {
     try {
-      const response = await fetch("http://192.168.1.131:3000/pump/on");
+      const response = await fetch("http://192.168.1.134/pump/on");
       const data = await response.json();
       console.log("Pump turned on:", data);
     } catch (error) {
@@ -24,7 +24,7 @@ const Home = () => {
   // Funcție pentru a trimite cererea de oprire a pompei
   const handlePumpOff = async () => {
     try {
-      const response = await fetch("http://192.168.1.131:3000/pump/off");
+      const response = await fetch("http://192.168.1.134/pump/off");
       const data = await response.json();
       console.log("Pump turned off:", data);
     } catch (error) {
@@ -36,7 +36,7 @@ const Home = () => {
     const fetchData = async () => {
       try {
         console.log("Fetching moisture data...");
-        const response = await fetch("http://192.168.1.131:3000/moisture");
+        const response = await fetch("http://192.168.1.134/moisture");
 
         const data = await response.json();
         console.log("Moisture data received:", data);
@@ -47,8 +47,10 @@ const Home = () => {
       }
     };
 
-    // const interval = setInterval(fetchData, 10000); // Fetch data every 6 seconds
-    // return () => clearInterval(interval);
+    fetchData(); 
+    
+    const interval = setInterval(fetchData, 10000); // Fetch data every 6 seconds
+    return () => clearInterval(interval);
   }, []);
 
   return (
