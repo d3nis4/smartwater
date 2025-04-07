@@ -1,57 +1,77 @@
-  const { SerialPort } = require("serialport");
-  const { ReadlineParser } = require("@serialport/parser-readline");
-  const express = require("express");
-  const cors = require("cors");
+const express = require('express');
+const { SerialPort } = require('serialport'); 
+const { ReadlineParser } = require('@serialport/parser-readline');
+const app = express();
+const port = 3000;
 
-  const app = express();
-  app.use(cors());
+const portName = 'COM3'; // Exemplu de port, modifică dacă este necesar
+const serialPort = new SerialPort({
+  path: portName,
+  baudRate: 9600
+});
 
-  // Creați o instanță SerialPort
-  const port = new SerialPort({ path: "COM3", baudRate: 9600 });
-  const parser = port.pipe(new ReadlineParser({ delimiter: "\n" }));
+// Creăm parserul care citește linia completă
+const parser = serialPort.pipe(new ReadlineParser({ delimiter: '\n' }));
 
-  let moistureValue = 0;
+let moistureValue = null;
+let pumpStatus = 'off'; // Starea pompei (initializată ca oprită)
 
-  // Citirea datelor de la portul serial
-  parser.on("data", (data) => {
-    if (data.includes("Moisture:")) {
-      const matches = data.match(/Moisture:\s*(\d+)/);  // Extrage valoarea umidității din datele seriale
-      if (matches && matches[1]) {
-        moistureValue = parseInt(matches[1], 10);
-        console.log("Moisture:", moistureValue);
-      }
-    }
-  });
+// Citirea datelor de la Arduino
+parser.on('data', (data) => {
+  if (data.startsWith('Umiditate:')) {
+    let sensorValue = parseInt(data.split(':')[1].trim());
+    console.log("Citire senzor:", sensorValue);
 
-  // Definiți endpoint-ul /moisture pentru a obține valoarea umidității
-  app.get("/moisture", (req, res) => {
-    res.json({moisture : moistureValue });
-    console.log("Moisutre: ",moistureValue );
-  });
+    let mappedMoisture = mapSensorValueToMoisture(sensorValue);
+    moistureValue = mappedMoisture;
 
-  // Endpoint pentru a porni pompa
-  app.get("/pump/on", (req, res) => {
-    port.write("ON\n", (err) => {
-      if (err) {
-        return res.status(500).send({ status: 'Error sending command to Arduino', error: err.message });
-      }
-      // console.log('Pump turned on');
-      res.send({ status: 'Pump turned on' });
-    });
-  });
+    console.log("Umiditate:", moistureValue + "%");
+  }
+});
 
-  // Endpoint pentru a opri pompa
-  app.get("/pump/off", (req, res) => {
-    port.write("OFF\n", (err) => {
-      if (err) {
-        return res.status(500).send({ status: 'Error sending command to Arduino', error: err.message });
-      }
-      // console.log('Pump turned off');
-      res.send({ status: 'Pump turned off' });
-    });
-  });
+// Funcția de mapare a valorii senzorului la umiditate
+function mapSensorValueToMoisture(sensorValue) {
+  const minSensorValue = 479; // Valoarea minimă (senzor scufundat complet în apă)
+  const maxSensorValue = 1023; // Valoarea maximă (senzor complet uscat)
 
-  // Pornirea serverului
-  app.listen(3000, () => {
-    console.log("Server running on http://192.168.1.134:3000");
-  });
+  if (sensorValue <= minSensorValue) {
+    return 100; // Dacă senzorul este complet scufundat, considerăm 100% umiditate
+  } else if (sensorValue >= maxSensorValue) {
+    return 0; // Dacă senzorul este complet uscat, considerăm 0% umiditate
+  } else {
+    return Math.round(((maxSensorValue - sensorValue) / (maxSensorValue - minSensorValue)) * 100);
+  }
+}
+
+// Ruta pentru a porni pompa
+app.post('/pump/on', (req, res) => {
+  serialPort.write('1');  // Trimite comanda pentru pornirea pompei
+  pumpStatus = 'on'; // Actualizează starea pompei
+  res.json({ message: 'Pompa pornita' });
+});
+
+// Ruta pentru a opri pompa
+app.post('/pump/off', (req, res) => {
+  serialPort.write('0');  // Trimite comanda pentru oprirea pompei
+  pumpStatus = 'off'; // Actualizează starea pompei
+  res.json({ message: 'Pompa oprita' });
+});
+
+// Ruta pentru a obține valoarea de umiditate
+app.get('/moisture', (req, res) => {
+  if (moistureValue !== null) {
+    res.json({ moisture: moistureValue });
+  } else {
+    res.status(500).json({ error: 'Nu am putut citi valoarea umidității.' });
+  }
+});
+
+// Ruta pentru a obține starea pompei
+app.get('/pump/status', (req, res) => {
+  res.json({ pumpStatus: pumpStatus }); // returnează statusul pompei ca JSON
+});
+
+
+app.listen(port, () => {
+  console.log(`Server listening on http://192.168.1.134:${port}`);
+});
