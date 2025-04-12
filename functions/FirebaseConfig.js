@@ -3,14 +3,15 @@ import { getFirestore } from "firebase/firestore";
 
 // Setează configurația ta Firebase
 const firebaseConfig = {
-  apiKey: "API_KEY",  // Înlocuiește cu cheia ta API
-  authDomain: "PROJECT_ID.firebaseapp.com",  // Înlocuiește cu ID-ul tău de proiect
-  projectId: "smartwater-d025f",  // Înlocuiește cu ID-ul tău de proiect
-  storageBucket: "PROJECT_ID.appspot.com",  // Înlocuiește cu ID-ul tău de proiect
-  messagingSenderId: "762378192753",  // Înlocuiește cu Sender ID
-  appId: "APP_ID",  // Înlocuiește cu App ID
-  measurementId: "G-MEASUREMENT_ID",  // (Opțional) înlocuiește cu Measurement ID
-};
+    apiKey: "AIzaSyCok2lIjnAxlQUb1TjpDV9nLQhR4HG3DEk",
+    authDomain: "smartwater-d025f.firebaseapp.com",
+    projectId: "smartwater-d025f",
+    storageBucket: "smartwater-d025f.firebasestorage.app",
+    messagingSenderId: "762378192753",
+    appId: "1:762378192753:web:9cba2f136901f7e8b2d8d0",
+    measurementId: "G-9NG2SSZM9V"
+  };
+  
 
 // Inițializează Firebase
 const app = initializeApp(firebaseConfig);
@@ -19,3 +20,6 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 export { db };
+
+
+
