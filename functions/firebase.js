@@ -2,18 +2,8 @@ import { getFirestore, doc, setDoc } from "firebase/firestore";
 import { useUser } from "@clerk/clerk-react"; // pentru a obține email-ul utilizatorului
 
 
-import * as Crypto from 'expo-crypto';
-
-const hashEmail = async (email) => {
-  const digest = await Crypto.digestStringAsync(
-    Crypto.CryptoDigestAlgorithm.SHA256,
-    email.toLowerCase().trim()
-  );
-  return digest; // poți folosi ca document ID
-};
-
 const email = "user@example.com";
-const hashedEmail = await hashEmail(email);
+
 
 // Exemplu de date pentru a salva în Firestore
 const dateIrigare = {

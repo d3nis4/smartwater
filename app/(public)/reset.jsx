@@ -1,66 +1,54 @@
-import { View, StyleSheet, TextInput, Button } from 'react-native';
+import { View, StyleSheet, TextInput, Button, Text, Alert } from 'react-native';
 import React, { useState } from 'react';
-import { Stack } from 'expo-router';
-import { useSignIn } from '@clerk/clerk-expo';
+import { sendPasswordResetEmail } from 'firebase/auth';
+import { auth } from '../../functions/FirebaseConfig'; // Asigură-te că ai un export corect
+import { useRouter } from 'expo-router';
 
 const PwReset = () => {
   const [emailAddress, setEmailAddress] = useState('');
-  const [password, setPassword] = useState('');
-  const [code, setCode] = useState('');
-  const [successfulCreation, setSuccessfulCreation] = useState(false);
-  const { signIn, setActive } = useSignIn();
+  const [emailSent, setEmailSent] = useState(false);
+  const router = useRouter();
 
-  // Request a passowrd reset code by email
   const onRequestReset = async () => {
-    try {
-      await signIn.create({
-        strategy: 'reset_password_email_code',
-        identifier: emailAddress,
-      });
-      setSuccessfulCreation(true);
-    } catch (err) {
-      alert(err.errors[0].message);
+    if (!emailAddress) {
+      return Alert.alert('Eroare', 'Te rugăm să introduci o adresă de email.');
     }
-  };
 
-  // Reset the password with the code and the new password
-  const onReset = async () => {
     try {
-      const result = await signIn.attemptFirstFactor({
-        strategy: 'reset_password_email_code',
-        code,
-        password,
-      });
-      console.log(result);
-      alert('Password reset successfully');
-
-      // Set the user session active, which will log in the user automatically
-      await setActive({ session: result.createdSessionId });
+      await sendPasswordResetEmail(auth, emailAddress);
+      setEmailSent(true);
     } catch (err) {
-      alert(err.errors[0].message);
+      console.error(err);
+      Alert.alert('Eroare', err.message || 'Ceva nu a mers bine. Încearcă din nou.');
     }
   };
 
   return (
     <View style={styles.container}>
-      <Stack.Screen options={{ headerBackVisible: !successfulCreation }} />
-
-      {!successfulCreation && (
+      {!emailSent ? (
         <>
-          <TextInput autoCapitalize="none" placeholder="simon@galaxies.dev" value={emailAddress} onChangeText={setEmailAddress} style={styles.inputField} />
-
-          <Button onPress={onRequestReset} title="Send Reset Email" color={'#6c47ff'}></Button>
+          <Text style={styles.loginTitle}>Resetare Parolă</Text>
+          <TextInput
+            autoCapitalize="none"
+            placeholder="Introdu adresa de email"
+            value={emailAddress}
+            onChangeText={setEmailAddress}
+            style={styles.inputField}
+            keyboardType="email-address"
+          />
+          <Button onPress={onRequestReset} title="Trimite email de resetare" color="#6c47ff" />
         </>
-      )}
-
-      {successfulCreation && (
-        <>
-          <View>
-            <TextInput value={code} placeholder="Code..." style={styles.inputField} onChangeText={setCode} />
-            <TextInput placeholder="New password" value={password} onChangeText={setPassword} secureTextEntry style={styles.inputField} />
-          </View>
-          <Button onPress={onReset} title="Set new Password" color={'#6c47ff'}></Button>
-        </>
+      ) : (
+        <View style={styles.successContainer}>
+          <Text style={styles.successText}>
+            ✔️ Emailul de resetare a fost trimis către {emailAddress}.
+          </Text>
+          <Button
+            title="Înapoi la login"
+            onPress={() => router.replace('/')}
+            color="#6c47ff"
+          />
+        </View>
       )}
     </View>
   );
@@ -69,21 +57,35 @@ const PwReset = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
     padding: 20,
+    justifyContent: 'center',
+  },
+  loginTitle: {
+    fontSize: 28,
+    fontFamily: 'poppins-bold',
+    textAlign: 'left',
+    marginTop: 20,
+    color: 'black',
   },
   inputField: {
-    marginVertical: 4,
-    height: 50,
+    fontFamily: 'poppins',
+    fontSize: 16,
+    padding: 15,
+    color: '#000',
     borderWidth: 1,
-    borderColor: '#6c47ff',
-    borderRadius: 4,
-    padding: 10,
-    backgroundColor: '#fff',
+    borderColor: '#ddd',
+    borderRadius: 25,
+    marginBottom: 20,
   },
-  button: {
-    margin: 8,
+  successContainer: {
     alignItems: 'center',
+    marginTop: 20,
+  },
+  successText: {
+    fontSize: 18,
+    color: 'green',
+    textAlign: 'center',
+    marginBottom: 20,
   },
 });
 

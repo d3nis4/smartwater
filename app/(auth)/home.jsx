@@ -1,57 +1,71 @@
+import { Ionicons } from '@expo/vector-icons';
+import { getFirestore, doc, setDoc, onSnapshot, updateDoc } from "firebase/firestore";
+import { db } from '../../functions/FirebaseConfig'; // Asigură-te că folosești configurația corectă a Firestore
+import { useAuth } from '../../functions';
 import { View, Text, Button, Image, TextInput, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import React, { useEffect, useState } from "react";
-import { useUser } from '@clerk/clerk-expo';
+
 import { Fontisto } from '@expo/vector-icons';
 import { Colors } from '../../constants/Colors';
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { LinearGradient } from 'expo-linear-gradient';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import Slider from '@react-native-community/slider';
-import { db } from '../../functions/FirebaseConfig';
-import { getFirestore, doc, setDoc, onSnapshot,updateDoc } from "firebase/firestore";
-
+import { getAuth } from 'firebase/auth';
+import { auth } from '../../functions/FirebaseConfig';
 
 const Home = () => {
-  const { user } = useUser();
+  const [user, setUser] = useState(null);
+  const [userId, setUserId] = useState(null);
   const [moisture, setMoisture] = useState(null);
-  const [error, setError] = useState(null);
   const [pumpStatus, setPumpStatus] = useState('off');
   const [pumpMode, setPumpMode] = useState('manual');
-  const [savedPumpMode, setSavedPumpMode] = useState('manual'); // New state for saved mode
+  const [savedPumpMode, setSavedPumpMode] = useState('manual');
   const [autoThreshold, setAutoThreshold] = useState(30);
-  const [savedAutoThreshold, setSavedAutoThreshold] = useState(30); // New state for saved threshold
+  const [savedAutoThreshold, setSavedAutoThreshold] = useState(30);
   const [scheduledDays, setScheduledDays] = useState([]);
   const [schedule, setSchedule] = useState(
     Array(7).fill().map(() => ({ timeSlots: [{ startTime: '', endTime: '' }] }))
   );
-  const [savedSchedule, setSavedSchedule] = useState( // New state for saved schedule
+  const [savedSchedule, setSavedSchedule] = useState(
     Array(7).fill().map(() => ({ timeSlots: [{ startTime: '', endTime: '' }] }))
   );
 
-  // Load data from Firestore
+  // Helper function to sanitize email for Firestore document ID
+  const getSafeEmail = (email) => 
+    email.toLowerCase().replace(/\./g, "_").replace(/@/g, "_");
+
+  // Track auth state changes
   useEffect(() => {
-    const db = getFirestore();
-    const userEmail = user?.primaryEmailAddress?.emailAddress;
+    const unsubscribe = auth.onAuthStateChanged((currentUser) => {
+      if (currentUser) {
+        setUser(currentUser);
+        setUserId(currentUser.uid);
+      } else {
+        setUser(null);
+        setUserId(null);
+      }
+    });
+    return unsubscribe;
+  }, []);
 
-    if (!userEmail) return;
+  // Load data from Firestore when user changes
+  useEffect(() => {
+    if (!user || !user.email) return;
 
-    const getSafeEmail = (email) =>
-      email.toLowerCase().replace(/\./g, "_").replace(/@/g, "_");
-    
-    const safeEmail = getSafeEmail(userEmail);
-      
+    const safeEmail = getSafeEmail(user.email);
     const unsubscribe = onSnapshot(doc(db, "users", safeEmail), (docSnap) => {
       if (docSnap.exists()) {
         const data = docSnap.data();
-        console.log("Date încărcate din Firestore:", data);
+        console.log("User data loaded:", data);
 
-        // Update both current and saved states
+        // Update states
         setPumpMode(data.pumpMode || 'manual');
         setSavedPumpMode(data.pumpMode || 'manual');
         setAutoThreshold(data.pragUmiditate || 30);
         setSavedAutoThreshold(data.pragUmiditate || 30);
         setPumpStatus(data.pumpStatus || 'off');
 
+        // Update schedule if exists
         if (data.ziileIrigare) {
           const newSchedule = Array(7).fill().map(() => ({ timeSlots: [] }));
           Object.keys(data.ziileIrigare).forEach(day => {
@@ -67,22 +81,79 @@ const Home = () => {
           });
           setSchedule(newSchedule);
           setSavedSchedule(newSchedule);
-          setScheduledDays(
-            Object.keys(data.ziileIrigare)
-              .map(day => ['Luni', 'Marți', 'Miercuri', 'Joi', 'Vineri', 'Sâmbătă', 'Duminică'].indexOf(day))
-              .filter(index => index >= 0)
-          );
         }
+      } else {
+        console.log("No document exists for user:", safeEmail);
+        // Initialize document if it doesn't exist
+        initializeUserDocument(safeEmail);
       }
     });
 
     return () => unsubscribe();
   }, [user]);
 
+  const initializeUserDocument = async (safeEmail) => {
+    try {
+      await setDoc(doc(db, "users", safeEmail), {
+        pumpMode: 'manual',
+        pumpStatus: 'off',
+        pragUmiditate: 30,
+        ziileIrigare: {
+          Luni: [], Marți: [], Miercuri: [], Joi: [], Vineri: [], Sâmbătă: [], Duminică: []
+        },
+        lastUpdated: new Date()
+      });
+      console.log("New user document initialized");
+    } catch (err) {
+      console.error("Error initializing user document:", err);
+    }
+  };
+
+  // Save all changes to Firestore
+  const saveToFirestore = async () => {
+    if (!user || !user.email) {
+      console.error("No authenticated user");
+      return;
+    }
+
+    const safeEmail = getSafeEmail(user.email);
+    const ziileIrigare = {
+      Luni: [], Marți: [], Miercuri: [], Joi: [], Vineri: [], Sâmbătă: [], Duminică: []
+    };
+
+    schedule.forEach((day, index) => {
+      const dayName = ['Luni', 'Marți', 'Miercuri', 'Joi', 'Vineri', 'Sâmbătă', 'Duminică'][index];
+      ziileIrigare[dayName] = day.timeSlots
+        .filter(slot => slot.startTime && slot.endTime)
+        .map(slot => `${slot.startTime}-${slot.endTime}`);
+    });
+
+    try {
+      await setDoc(doc(db, "users", safeEmail), {
+        pumpMode,
+        pumpStatus,
+        pragUmiditate: autoThreshold,
+        ziileIrigare,
+        lastUpdated: new Date()
+      }, { merge: true });
+
+      // Update saved states
+      setSavedPumpMode(pumpMode);
+      setSavedAutoThreshold(autoThreshold);
+      setSavedSchedule(schedule);
+
+      console.log("Data saved successfully");
+    } catch (err) {
+      console.error("Error saving data:", err);
+    }
+  };
+
+
   // Update pump mode in Firestore immediately when changed
   const updatePumpModeInFirestore = async (newMode) => {
     const db = getFirestore();
-    const userEmail = user?.primaryEmailAddress?.emailAddress;
+    const user = auth.currentUser;
+    const userEmail = user?.email;
     if (!userEmail) return;
 
     try {
@@ -100,44 +171,6 @@ const Home = () => {
   const handlePumpModeChange = (newMode) => {
     setPumpMode(newMode);
 
-  };
-
-  // Save all changes to Firestore
-  const saveToFirestore = async () => {
-    const db = getFirestore();
-    
-    const userEmail = user?.primaryEmailAddress?.emailAddress;
-    if (!userEmail) return;
-
-    const ziileIrigare = {
-      Luni: [], Marți: [], Miercuri: [], Joi: [], Vineri: [], Sâmbătă: [], Duminică: []
-    };
-
-    schedule.forEach((day, index) => {
-      const dayName = ['Luni', 'Marți', 'Miercuri', 'Joi', 'Vineri', 'Sâmbătă', 'Duminică'][index];
-      ziileIrigare[dayName] = day.timeSlots
-        .filter(slot => slot.startTime && slot.endTime)
-        .map(slot => `${slot.startTime}-${slot.endTime}`);
-    });
-
-    try {
-      await setDoc(doc(db, "users", userEmail), {
-        pumpMode,
-        pumpStatus,
-        pragUmiditate: autoThreshold,
-        ziileIrigare,
-        lastUpdated: new Date()
-      });
-      updatePumpModeInFirestore(newMode);
-      // Update saved states after successful save
-      setSavedPumpMode(pumpMode);
-      setSavedAutoThreshold(autoThreshold);
-      setSavedSchedule(schedule);
-
-      console.log("Datele au fost salvate cu succes.");
-    } catch (err) {
-      console.error("Eroare la salvarea datelor:", err);
-    }
   };
 
   const handlePumpOn = async () => {
@@ -180,10 +213,10 @@ const Home = () => {
     setSchedule(newSchedule);  // Actualizează starea cu noul program
   };
   const removeDay = (dayIndex) => {
-  const newSchedule = [...schedule];  // Creează o copie a programului
-  newSchedule[dayIndex] = { timeSlots: [] };  // Setează intervalele zilei ca fiind goale
-  setSchedule(newSchedule);  // Actualizează starea cu noul program
-};
+    const newSchedule = [...schedule];  // Creează o copie a programului
+    newSchedule[dayIndex] = { timeSlots: [] };  // Setează intervalele zilei ca fiind goale
+    setSchedule(newSchedule);  // Actualizează starea cu noul program
+  };
 
 
   const handleTimeChange = (dayIndex, slotIndex, field, value) => {
@@ -193,7 +226,8 @@ const Home = () => {
       setSchedule(newSchedule);
     }
   };
-  
+
+
 
   useEffect(() => {
     const fetchData = async () => {
@@ -209,7 +243,6 @@ const Home = () => {
         setMoisture(moistureData.moisture);
         setPumpStatus(pumpData.pumpStatus);
       } catch (error) {
-        setError("Failed to fetch data");
         console.error("Error:", error);
       }
     };
@@ -354,77 +387,77 @@ const Home = () => {
           </View>
         )}
 
-{pumpMode === 'scheduled' && (
-  <View style={styles.scheduleContainer}>
-    <Text style={styles.sectionSubtitle}>Selectați zilele:</Text>
-    <View style={styles.daysSelector}>
-      {['Luni', 'Marți', 'Miercuri', 'Joi', 'Vineri', 'Sâmbătă', 'Duminică'].map((day, index) => {
-        // Verifică dacă există intervale programate pentru acea zi
-        const hasSchedule = schedule[index].timeSlots.length > 0;
+        {pumpMode === 'scheduled' && (
+          <View style={styles.scheduleContainer}>
+            <Text style={styles.sectionSubtitle}>Selectați zilele:</Text>
+            <View style={styles.daysSelector}>
+              {['Luni', 'Marți', 'Miercuri', 'Joi', 'Vineri', 'Sâmbătă', 'Duminică'].map((day, index) => {
+                // Verifică dacă există intervale programate pentru acea zi
+                const hasSchedule = schedule[index].timeSlots.length > 0;
 
-        return (
-          <TouchableOpacity
-            key={index}
-            style={[styles.dayButton, hasSchedule && styles.dayButtonActive]} // Aplica stilul activ doar pentru zilele cu programare
-            onPress={() => toggleDay(index)}
-          >
-            <Text style={[styles.dayButtonText, hasSchedule && styles.dayButtonTextActive]}>
-              {day.charAt(0)} {/* Afișează prima literă a zilei */}
-            </Text>
-          </TouchableOpacity>
-        );
-      })}
-    </View>
+                return (
+                  <TouchableOpacity
+                    key={index}
+                    style={[styles.dayButton, hasSchedule && styles.dayButtonActive]} // Aplica stilul activ doar pentru zilele cu programare
+                    onPress={() => toggleDay(index)}
+                  >
+                    <Text style={[styles.dayButtonText, hasSchedule && styles.dayButtonTextActive]}>
+                      {day.charAt(0)} {/* Afișează prima literă a zilei */}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
 
-    <Text style={styles.sectionSubtitle}>Programează orele:</Text>
-    {scheduledDays.map(dayIndex => (
-      <View key={dayIndex} style={styles.dayScheduleContainer}>
-        <Text style={styles.dayTitle}>
-          {['Luni', 'Marți', 'Miercuri', 'Joi', 'Vineri', 'Sâmbătă', 'Duminică'][dayIndex]}
-        </Text>
+            <Text style={styles.sectionSubtitle}>Programează orele:</Text>
+            {scheduledDays.map(dayIndex => (
+              <View key={dayIndex} style={styles.dayScheduleContainer}>
+                <Text style={styles.dayTitle}>
+                  {['Luni', 'Marți', 'Miercuri', 'Joi', 'Vineri', 'Sâmbătă', 'Duminică'][dayIndex]}
+                </Text>
 
-        {schedule[dayIndex].timeSlots.map((slot, slotIndex) => (
-          <View key={slotIndex} style={styles.timeSlotContainer}>
-            <TextInput
-              style={styles.timeInput}
-              value={slot.startTime}
-              onChangeText={(text) => handleTimeChange(dayIndex, slotIndex, 'startTime', text)}
-              placeholder="HH:MM"
-              keyboardType="numeric"
-              maxLength={5}
-            />
-            <Text style={styles.timeSeparator}>-</Text>
-            <TextInput
-              style={styles.timeInput}
-              value={slot.endTime}
-              onChangeText={(text) => handleTimeChange(dayIndex, slotIndex, 'endTime', text)}
-              placeholder="HH:MM"
-              keyboardType="numeric"
-              maxLength={5}
-            />
+                {schedule[dayIndex].timeSlots.map((slot, slotIndex) => (
+                  <View key={slotIndex} style={styles.timeSlotContainer}>
+                    <TextInput
+                      style={styles.timeInput}
+                      value={slot.startTime}
+                      onChangeText={(text) => handleTimeChange(dayIndex, slotIndex, 'startTime', text)}
+                      placeholder="HH:MM"
+                      keyboardType="numeric"
+                      maxLength={5}
+                    />
+                    <Text style={styles.timeSeparator}>-</Text>
+                    <TextInput
+                      style={styles.timeInput}
+                      value={slot.endTime}
+                      onChangeText={(text) => handleTimeChange(dayIndex, slotIndex, 'endTime', text)}
+                      placeholder="HH:MM"
+                      keyboardType="numeric"
+                      maxLength={5}
+                    />
 
-            <TouchableOpacity
-              style={styles.removeTimeButton}
-              onPress={() => removeTimeSlot(dayIndex, slotIndex)}
-            >
-              <Ionicons name="close" size={20} color="#e74c3c" />
-            </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.removeTimeButton}
+                      onPress={() => removeTimeSlot(dayIndex, slotIndex)}
+                    >
+                      <Ionicons name="close" size={20} color="#e74c3c" />
+                    </TouchableOpacity>
+                  </View>
+                ))}
+
+                {schedule[dayIndex].timeSlots.length < 3 && (
+                  <TouchableOpacity
+                    style={styles.addTimeButton}
+                    onPress={() => addTimeSlot(dayIndex)}
+                  >
+                    <Ionicons name="add" size={20} color="#4a90e2" />
+                    <Text style={styles.addTimeText}>Adaugă interval</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            ))}
           </View>
-        ))}
-
-        {schedule[dayIndex].timeSlots.length < 3 && (
-          <TouchableOpacity
-            style={styles.addTimeButton}
-            onPress={() => addTimeSlot(dayIndex)}
-          >
-            <Ionicons name="add" size={20} color="#4a90e2" />
-            <Text style={styles.addTimeText}>Adaugă interval</Text>
-          </TouchableOpacity>
         )}
-      </View>
-    ))}
-  </View>
-)}
 
         {/* Butonul de save */}
         <View style={styles.saveButtonContainer}>
@@ -436,78 +469,78 @@ const Home = () => {
       </View>
 
       {/* Recent Activity */}
-     {/* Recent Activity */}
-<View style={styles.activityContainer}>
-  <Text style={styles.sectionTitle}>Setări Sistem Irigare</Text>
+      {/* Recent Activity */}
+      <View style={styles.activityContainer}>
+        <Text style={styles.sectionTitle}>Setări Sistem Irigare</Text>
 
-  <View style={styles.activityItem}>
-    <View style={styles.activityIcon}>
-      <Ionicons name="settings" size={20} color="#2ecc71" />
-    </View>
-    <View style={styles.activityText}>
-      <Text style={styles.activityTitle}>Mod pompa</Text>
-      <Text style={styles.activityTime}>
-        {savedPumpMode === 'manual'
-          ? 'Manual'
-          : savedPumpMode === 'auto'
-          ? 'Automat'
-          : 'Programat'}
-      </Text>
-    </View>
-  </View>
+        <View style={styles.activityItem}>
+          <View style={styles.activityIcon}>
+            <Ionicons name="settings" size={20} color="#2ecc71" />
+          </View>
+          <View style={styles.activityText}>
+            <Text style={styles.activityTitle}>Mod pompa</Text>
+            <Text style={styles.activityTime}>
+              {savedPumpMode === 'manual'
+                ? 'Manual'
+                : savedPumpMode === 'auto'
+                  ? 'Automat'
+                  : 'Programat'}
+            </Text>
+          </View>
+        </View>
 
-  {savedPumpMode === 'auto' && (
-    <View style={styles.activityItem}>
-      <View style={styles.activityIcon}>
-        <Ionicons name="water" size={20} color="#3498db" />
-      </View>
-      <View style={styles.activityText}>
-        <Text style={styles.activityTitle}>Prag umiditate</Text>
-        <Text style={styles.activityTime}>{savedAutoThreshold}%</Text>
-      </View>
-    </View>
-  )}
-
-  {/* Status actual pompa */}
-  <View style={styles.activityItem}>
-    <View style={styles.activityIcon}>
-      <Ionicons name="flash" size={20} color="#f1c40f" />
-    </View>
-    <View style={styles.activityText}>
-      <Text style={styles.activityTitle}>Status pompa</Text>
-      <Text style={styles.activityTime}>
-        {pumpStatus === 'on' ? 'Activă' : 'Inactivă'}
-      </Text>
-    </View>
-  </View>
-
-  {/* Ore programate (dacă e mod programat) */}
-  {savedPumpMode === 'scheduled' && (
-    <>
-      {savedSchedule.map((day, index) => {
-        const dayName = ['Luni', 'Marți', 'Miercuri', 'Joi', 'Vineri', 'Sâmbătă', 'Duminică'][index];
-        const intervals = day.timeSlots
-          .filter(slot => slot.startTime && slot.endTime)
-          .map(slot => `${slot.startTime}-${slot.endTime}`)
-          .join(', ');
-
-        if (!intervals) return null;
-
-        return (
-          <View key={index} style={styles.activityItem}>
+        {savedPumpMode === 'auto' && (
+          <View style={styles.activityItem}>
             <View style={styles.activityIcon}>
-              <Ionicons name="calendar" size={20} color="#9b59b6" />
+              <Ionicons name="water" size={20} color="#3498db" />
             </View>
             <View style={styles.activityText}>
-              <Text style={styles.activityTitle}>{dayName}</Text>
-              <Text style={styles.activityTime}>{intervals}</Text>
+              <Text style={styles.activityTitle}>Prag umiditate</Text>
+              <Text style={styles.activityTime}>{savedAutoThreshold}%</Text>
             </View>
           </View>
-        );
-      })}
-    </>
-  )}
-</View>
+        )}
+
+        {/* Status actual pompa */}
+        <View style={styles.activityItem}>
+          <View style={styles.activityIcon}>
+            <Ionicons name="flash" size={20} color="#f1c40f" />
+          </View>
+          <View style={styles.activityText}>
+            <Text style={styles.activityTitle}>Status pompa</Text>
+            <Text style={styles.activityTime}>
+              {pumpStatus === 'on' ? 'Activă' : 'Inactivă'}
+            </Text>
+          </View>
+        </View>
+
+        {/* Ore programate (dacă e mod programat) */}
+        {savedPumpMode === 'scheduled' && (
+          <>
+            {savedSchedule.map((day, index) => {
+              const dayName = ['Luni', 'Marți', 'Miercuri', 'Joi', 'Vineri', 'Sâmbătă', 'Duminică'][index];
+              const intervals = day.timeSlots
+                .filter(slot => slot.startTime && slot.endTime)
+                .map(slot => `${slot.startTime}-${slot.endTime}`)
+                .join(', ');
+
+              if (!intervals) return null;
+
+              return (
+                <View key={index} style={styles.activityItem}>
+                  <View style={styles.activityIcon}>
+                    <Ionicons name="calendar" size={20} color="#9b59b6" />
+                  </View>
+                  <View style={styles.activityText}>
+                    <Text style={styles.activityTitle}>{dayName}</Text>
+                    <Text style={styles.activityTime}>{intervals}</Text>
+                  </View>
+                </View>
+              );
+            })}
+          </>
+        )}
+      </View>
 
 
     </ScrollView>

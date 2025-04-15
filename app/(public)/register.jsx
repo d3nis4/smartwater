@@ -1,29 +1,24 @@
-import { Button, TextInput, View, StyleSheet, Text, Pressable, TouchableOpacity } from 'react-native';
-import { useSignUp } from '@clerk/clerk-expo';
+import React, { useState } from 'react';
+import { View, Text, TextInput, StyleSheet, TouchableOpacity,TouchableWithoutFeedback,Modal,Platform } from 'react-native';
+import { createUserWithEmailAndPassword, sendEmailVerification } from "firebase/auth";
+import { auth } from '../../functions/FirebaseConfig';
+
 import Spinner from 'react-native-loading-spinner-overlay';
-import { useState } from 'react';
-import { Link } from 'expo-router';
-import { Colors } from '../../constants/Colors'
 import Ionicons from '@expo/vector-icons/Ionicons';
-import AntDesign from '@expo/vector-icons/AntDesign';
+import { Colors } from '../../constants/Colors'; // Asigură-te că ai setat corect culorile
+import { Link } from 'expo-router';
+import { Pressable } from 'react-native';
 
 const Register = () => {
-  const { isLoaded, signUp, setActive } = useSignUp();
-
   const [emailAddress, setEmailAddress] = useState('');
   const [password, setPassword] = useState('');
-  const [pendingVerification, setPendingVerification] = useState(false);
-  const [code, setCode] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [confirmPassword, setConfirmPassword] = useState("");
+  const [error, setError] = useState('');
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const [isConfirmPasswordVisible, setIsConfirmPasswordVisible] = useState(false);
-  const [error, setError] = useState("");
-  const [emailError, setEmailError] = useState('');
-  const [passwordError, setPasswordError] = useState('');
-  const [confirmPasswordError, setConfirmPasswordError] = useState('');
-
-
+  const [code, setCode] = useState(''); // Adaugă acest state pentru codul de email
+  const [modalVisible, setModalVisible] = useState(false); 
   const togglePasswordVisibility = () => {
     setIsPasswordVisible(!isPasswordVisible);
   };
@@ -40,238 +35,206 @@ const Register = () => {
     if (!emailPattern.test(email)) {
       return 'Adresa de email nu este validă';
     }
-    return ''; // Nu există eroare
+    return '';
   };
 
-  // Functia de schimbare a email-ului
-  const handleEmailChange = (email) => {
-    setEmailAddress(email);
-
-    // Verificăm dacă email-ul este valid
-    const emailError = validateEmail(email);
-    console.log(emailError);
-    if (emailError) {
-      setError(emailError); // Afișează mesajul de eroare dacă există o problemă
-    } else {
-      setError('');  // Șterge eroarea dacă email-ul este valid
-    }
-  };
-
-
-
-  // Validarea parolei
   const validatePassword = (password) => {
     if (password.length < 8) {
       return 'Parola trebuie sa aiba cel putin 8 caractere';
     }
     return '';
   };
-
-
-  // Functia de schimbare a parolei
-  const handlePasswordChange = (password) => {
-    setPassword(password);
-    const passwordError = validatePassword(password);
-    setError(passwordError || ""); // Setează eroarea pentru parola, dacă este cazul
-  };
-
   const onSignUpPress = async () => {
     if (password !== confirmPassword) {
-      setError("Parolele nu corespund!");
+      setError('Parolele nu corespund!');
       return;
-    } else {
-      setError("");
     }
 
-    if (!isLoaded) {
+    const emailError = validateEmail(emailAddress);
+    if (emailError) {
+      setError(emailError);
+      return;
+    }
+
+    const passwordError = validatePassword(password);
+    if (passwordError) {
+      setError(passwordError);
       return;
     }
 
     setLoading(true);
 
     try {
-      // Încearcă să creezi contul pe server
-      await signUp.create({
-        emailAddress,
-        password,
-      });
+      // Crearea unui utilizator în Firebase
+      const userCredential = await createUserWithEmailAndPassword(auth, emailAddress, password);
+      const user = userCredential.user;
 
-      await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
-      setPendingVerification(true);
+      // Trimiterea unui email de verificare
+      await sendEmailVerification(user);
+      setLoading(false);
+      setError('');
+      alert('Contul a fost creat cu succes! Te rugăm să verifici email-ul pentru a-ți activa contul.');
+
     } catch (err) {
-
-      if (err.message.includes("email already exists")) {
-        setError("Adresa de email este deja înregistrată.");
+      setLoading(false);
+      console.error("Eroare Firebase:", err); 
+      if (err === 'auth/email-already-in-use') {
+        setError('Adresa de email este deja înregistrată.');
       } else {
-
-        setError("A apărut o eroare, te rugăm să încerci din nou.");
+        setError('A apărut o eroare, te rugăm să încerci din nou.');
       }
-    } finally {
-      setLoading(false);
     }
   };
 
-
-
-  // Verificarea codului de email
+  // Funcția de verificare a codului
   const onPressVerify = async () => {
-    if (!isLoaded) return;
-
-    setLoading(true);
-
-    try {
-      const completeSignUp = await signUp.attemptEmailAddressVerification({ code });
-      await setActive({ session: completeSignUp.createdSessionId });
-    } catch (err) {
-      // alert(err.errors[0].message);
-    } finally {
-      setLoading(false);
+    if (code.length === 0) {
+      setError('Te rugăm să introduci codul primit pe email.');
+      return;
     }
+    // Adaugă logica pentru verificarea codului, în funcție de implementarea ta Firebase
+    alert('Codul a fost verificat cu succes!');
   };
-
 
   return (
+
+    
     <View style={styles.container}>
       <Spinner visible={loading} />
 
-      {!pendingVerification && (
-        <>
-          <Text style={styles.loginTitle}>Sign Up</Text>  
+      <Text style={styles.loginTitle}>Sign Up</Text>
 
-          <View style={styles.loginForm}>
+      <View style={styles.loginForm}>
 
-            {/* Email Input */}
-            <View style={styles.group}>
-              <Text style={styles.label}>Email</Text>
-              <View style={styles.underlineContainer}>
-                <Ionicons name="person-sharp" size={24} color={Colors.DARKGREEN} style={{ marginRight: 8 }} />
-                <TextInput
-                  autoCapitalize="none"
-                  placeholder="Introdu adresa de email"
-                  value={emailAddress}
-                  onChangeText={handleEmailChange}
-                  style={[styles.inputField, { flex: 1 }]}
-                />
-              </View>
-
-              {/* Mesaj eroare pentru email
-              {emailError && <Text style={styles.errorMessage}>{emailError}</Text>} */}
-            </View>
-
-            <View style={styles.group}>
-              <Text style={styles.label}>Parola</Text>
-              <View style={styles.underlineContainer}>
-                <Ionicons name="lock-open" size={24} color={Colors.DARKGREEN} style={{ marginRight: 8 }} />
-                <TextInput
-                  placeholder="Introdu parola"
-                  value={password}
-                  onChangeText={handlePasswordChange}
-                  secureTextEntry={!isPasswordVisible}
-                  style={[styles.inputField, { flex: 1 }]}
-                />
-                <TouchableOpacity onPress={togglePasswordVisibility}>
-                  <Ionicons
-                    name={isPasswordVisible ? "eye-off" : "eye"}
-                    size={24}
-                    color={Colors.DARKGREEN}
-                  />
-                </TouchableOpacity>
-              </View>
-
-              {/* Mesaj eroare pentru parolă */}
-  {passwordError && <Text style={styles.errorMessage}>{passwordError}</Text>}
-            </View>
-
-            {/* Confirm Password Input */}
-            <View style={styles.group}>
-              <Text style={styles.label}>Reintrodu parola</Text>
-              <View style={styles.underlineContainer}>
-                <Ionicons name="lock-open" size={24} color={Colors.DARKGREEN} style={{ marginRight: 8 }} />
-                <TextInput
-                  placeholder="Introdu din nou parola"
-                  value={confirmPassword}
-                  onChangeText={setConfirmPassword}
-                  secureTextEntry={!isConfirmPasswordVisible}
-                  style={[styles.inputField, { flex: 1 }]}
-                />
-                <TouchableOpacity onPress={toggleConfirmPasswordVisibility}>
-                  <Ionicons
-                    name={isConfirmPasswordVisible ? "eye-off" : "eye"}
-                    size={24}
-                    color={Colors.DARKGREEN}
-                  />
-                </TouchableOpacity>
-              </View>
-              {error && <Text style={styles.errorMessage}>{error}</Text>}
-
-              {/* Mesaj eroare pentru confirmarea parolei */}
-  {confirmPasswordError && <Text style={styles.errorMessage}>{confirmPasswordError}</Text>}
-            </View>
-
-
-
-            {/* Sign Up Button */}
-           
-            <View style={styles.group}>
-              <TouchableOpacity style={styles.button} onPress={onSignUpPress}>
-                <Text style={styles.buttonText}>Creeaza contul</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Sign in button  */}
-            <View style={{ marginTop: 100 }}>
-              <Text style={{
-                textAlign: 'center',
-                fontSize: 16,
-                fontFamily: 'poppins'
-              }}>Ai deja un cont?</Text>
-              <Link href="/login" asChild>
-                <Pressable style={{
-                  backgroundColor: Colors.PRIMARY,
-                  padding: 15,
-                  marginTop: 10,
-                  borderRadius: 25,
-                  alignItems: 'center',
-                }}>
-                  <Text style={styles.link}>Conecteaza-te</Text>
-                </Pressable>
-              </Link>
-
-            </View>
+        {/* Email Input */}
+        <View style={styles.group}>
+          <Text style={styles.label}>Email</Text>
+          <View style={styles.underlineContainer}>
+            <Ionicons name="person-sharp" size={24} color={Colors.DARKGREEN} style={{ marginRight: 8 }} />
+            <TextInput
+              autoCapitalize="none"
+              placeholder="Introdu adresa de email"
+              value={emailAddress}
+              onChangeText={setEmailAddress}
+              style={[styles.inputField, { flex: 1 }]}
+            />
           </View>
-        </>
-      )}
 
-      {pendingVerification && (
-        <>
+          {/* Mesaj eroare pentru email
+              {emailError && <Text style={styles.errorMessage}>{emailError}</Text>} */}
+        </View>
 
+        <View style={styles.group}>
+          <Text style={styles.label}>Parola</Text>
+          <View style={styles.underlineContainer}>
+            <Ionicons name="lock-open" size={24} color={Colors.DARKGREEN} style={{ marginRight: 8 }} />
+            <TextInput
+              placeholder="Introdu parola"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={!isPasswordVisible}
+              style={[styles.inputField, { flex: 1 }]}
+            />
+            <TouchableOpacity onPress={togglePasswordVisibility}>
+              <Ionicons
+                name={isPasswordVisible ? "eye-off" : "eye"}
+                size={24}
+                color={Colors.DARKGREEN}
+              />
+            </TouchableOpacity>
+          </View>
+
+        
+        </View>
+
+        {/* Confirm Password Input */}
+        <View style={styles.group}>
+          <Text style={styles.label}>Reintrodu parola</Text>
+          <View style={styles.underlineContainer}>
+            <Ionicons name="lock-open" size={24} color={Colors.DARKGREEN} style={{ marginRight: 8 }} />
+            <TextInput
+              placeholder="Introdu din nou parola"
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+              secureTextEntry={!isConfirmPasswordVisible}
+              style={[styles.inputField, { flex: 1 }]}
+            />
+            <TouchableOpacity onPress={toggleConfirmPasswordVisibility}>
+              <Ionicons
+                name={isConfirmPasswordVisible ? "eye-off" : "eye"}
+                size={24}
+                color={Colors.DARKGREEN}
+              />
+            </TouchableOpacity>
+          </View>
+          {error && <Text style={styles.errorMessage}>{error}</Text>}
+
+         </View>
+
+
+
+        {/* Sign Up Button */}
+
+        <View style={styles.group}>
+          <TouchableOpacity style={styles.button} onPress={onSignUpPress}>
+            <Text style={styles.buttonText}>Creeaza contul</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Sign in button  */}
+        <View style={{ marginTop: 100 }}>
           <Text style={{
-            fontSize: 28,
-            fontFamily: 'poppins-bold', // Use the Poppins font
-            textAlign: 'left',
-            marginTop: 20,
-            color: 'black',
-            marginBottom: 50
-          }}>
-            Introdu codul primit pe adresa de email</Text>
-          <View style={styles.group}>
+            textAlign: 'center',
+            fontSize: 16,
+            fontFamily: 'poppins'
+          }}>Ai deja un cont?</Text>
+          <Link href="/(public)/login" asChild>
+            <Pressable style={{
+              backgroundColor: Colors.PRIMARY,
+              padding: 15,
+              marginTop: 10,
+              borderRadius: 25,
+              alignItems: 'center',
+            }}>
+              <Text style={styles.link}>Conecteaza-te</Text>
+            </Pressable>
+          </Link>
+
+        </View>
+      </View>
+
+
+
+     
+
+      {/* Cod de verificare */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Introdu codul primit pe email</Text>
             <TextInput
               value={code}
               placeholder="Cod..."
               style={[styles.inputField, styles.underlineContainer]}
               onChangeText={setCode}
             />
-          </View>
-
-          <View style={styles.group}>
+            {error && <Text style={styles.errorMessage}>{error}</Text>}
             <TouchableOpacity style={styles.button} onPress={onPressVerify}>
               <Text style={styles.buttonText}>Verifica email-ul</Text>
             </TouchableOpacity>
+            <TouchableOpacity style={styles.button} onPress={() => setModalVisible(false)}>
+              <Text style={styles.buttonText}>Anulează</Text>
+            </TouchableOpacity>
           </View>
-
-        </>
-      )}
+        </View>
+      </Modal>
     </View>
+
   );
 }
 
@@ -309,8 +272,8 @@ const styles = StyleSheet.create({
     color: 'red',
     fontSize: 16,
     marginTop: 10,
-    marginBottom:-10,
-    fontFamily:'poppins'
+    marginBottom: -10,
+    fontFamily: 'poppins'
   },
   inputField: {
     fontFamily: 'poppins',

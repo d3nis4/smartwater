@@ -1,135 +1,216 @@
-
-const handlePumpOn = async () => {
-  try {
-    // Actualizează local statusul pompei la 'on'
-    setPumpStatus('on');
-    
-    const response = await fetch("http://192.168.1.134:3000/pump/on", { method: 'POST' });
-    const data = await response.json();
-    console.log("Pump turned on:", data);
-  } catch (error) {
-    console.error("Error turning on pump:", error);
-  }
-};
-
-const handlePumpOff = async () => {
-  try {
-    // Actualizează local statusul pompei la 'off'
-    setPumpStatus('off');
-    
-    const response = await fetch("http://192.168.1.134:3000/pump/off", { method: 'POST' });
-    const data = await response.json();
-    console.log("Pump turned off:", data);
-  } catch (error) {
-    console.error("Error turning off pump:", error);
-  }
-};
+import React, { useState, useEffect } from 'react';
+import {View, StyleSheet, TextInput,TouchableOpacity,Text, Alert,} from 'react-native';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import Spinner from 'react-native-loading-spinner-overlay';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
+import { GoogleAuthProvider,signInWithCredential,signInWithEmailAndPassword,} from 'firebase/auth';
+import { auth } from '../../functions/FirebaseConfig';
+import { Colors } from '../../constants/Colors';
+import { Link } from 'expo-router';
 
 
 
-// SENSOR WATER FETCH -----
+export default function Login() {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
 
-useEffect(() => {
-  const fetchData = async () => {
+  // Configure Google Sign-In
+  useEffect(() => {
+    GoogleSignin.configure({
+      webClientId: '762378192753-qk7nu9m4ej2oba1lojtm9o4c429mv9gm.apps.googleusercontent.com', // Înlocuiește cu ID-ul tău din Firebase
+      offlineAccess: true,
+    });
+  }, []);
+
+  const handleLogin = async () => {
+    if (!email || !password)
+      return Alert.alert('Eroare', 'Completează toate câmpurile.');
+    setLoading(true);
     try {
-      console.log("Fetching moisture data...");
-      const response = await fetch("http://192.168.1.134:3000/moisture");
-      const data = await response.json();
-      console.log("Moisture data received:", data);
-      setMoisture(data.moisture);
+      await signInWithEmailAndPassword(auth, email, password);
+      console.log('Login reușit');
     } catch (error) {
-      setError("Failed to fetch data");
-      console.error("Error fetching data:", error);
+      Alert.alert('Eroare la autentificare', error.message);
+    } finally {
+      setLoading(false);
     }
   };
 
-  fetchData();
-  fetchPumpStatus(); // Verifică starea pompei la încărcarea aplicației
+  const handleGoogleLogin = async () => {
+    try {
+      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+      const userInfo = await GoogleSignin.signIn();
+      const { idToken } = await GoogleSignin.getTokens();
+      const googleCredential = GoogleAuthProvider.credential(idToken);
+      await signInWithCredential(auth, googleCredential);
+      console.log('Autentificare Google reușită!');
+    } catch (error) {
+      console.error(error);
+      Alert.alert('Eroare la login cu Google', error.message || 'A apărut o problemă.');
+    }
+  };
 
-  // const interval = setInterval(fetchData, 1000000); // Fetch data every 10 seconds
-  // const pumpStatusInterval = setInterval(fetchPumpStatus, 5000); // Verifică starea pompei la fiecare 5 secunde
-  // return () => {
-  //   clearInterval(interval);
-  //   clearInterval(pumpStatusInterval);
-  // };
+  return (
+    <View style={styles.loginWrap}>
+      <View style={styles.loginHtml}>
+        <Text style={styles.loginTitle}>Hai să ne conectăm</Text>
 
-}, []);
-
-
-
-{pumpMode === 'scheduled' && (
-  <View style={styles.scheduleContainer}>
-    <Text style={styles.sectionSubtitle}>Selectați zilele:</Text>
-    <View style={styles.daysSelector}>
-      {['Luni', 'Marți', 'Miercuri', 'Joi', 'Vineri', 'Sâmbătă', 'Duminică'].map((day, index) => (
-        <TouchableOpacity
-          key={index}
-          style={[
-            styles.dayButton,
-            scheduledDays.includes(index) && styles.dayButtonActive
-          ]}
-          onPress={() => toggleDay(index)}
-        >
-          <Text style={[
-            styles.dayButtonText,
-            scheduledDays.includes(index) && styles.dayButtonTextActive
-          ]}>
-            {day.charAt(0)}
-          </Text>
-        </TouchableOpacity>
-      ))}
-    </View>
-
-    <Text style={styles.sectionSubtitle}>Programează orele:</Text>
-    {scheduledDays.map(dayIndex => (
-      <View key={dayIndex} style={styles.dayScheduleContainer}>
-        <Text style={styles.dayTitle}>
-          {['Luni', 'Marți', 'Miercuri', 'Joi', 'Vineri', 'Sâmbătă', 'Duminică'][dayIndex]}
-        </Text>
-        
-        {schedule[dayIndex].timeSlots.map((slot, slotIndex) => (
-          <View key={slotIndex} style={styles.timeSlotContainer}>
-            <TextInput
-              style={styles.timeInput}
-              value={slot.startTime}
-              onChangeText={(text) => handleTimeChange(dayIndex, slotIndex, 'startTime', text)}
-              placeholder="HH:MM"
-              keyboardType="numeric"
-              maxLength={5}
-            />
-            <Text style={styles.timeSeparator}>-</Text>
-            <TextInput
-              style={styles.timeInput}
-              value={slot.endTime}
-              onChangeText={(text) => handleTimeChange(dayIndex, slotIndex, 'endTime', text)}
-              placeholder="HH:MM"
-              keyboardType="numeric"
-              maxLength={5}
-            />
-            
-            {schedule[dayIndex].timeSlots.length > 1 && (
-              <TouchableOpacity 
-                style={styles.removeTimeButton}
-                onPress={() => removeTimeSlot(dayIndex, slotIndex)}
-              >
-                <Ionicons name="close" size={20} color="#e74c3c" />
-              </TouchableOpacity>
-            )}
+        <View style={styles.loginForm}>
+          {/* Email input */}
+          <View style={styles.group}>
+            <Text style={styles.label}>Email</Text>
+            <View style={styles.underlineContainer}>
+              <Ionicons
+                name="person-sharp"
+                size={24}
+                color={Colors.DARKGREEN}
+                style={{ marginRight: 8 }}
+              />
+              <TextInput
+                style={[styles.inputField, { flex: 1 }]}
+                placeholder="Introdu adresa de email"
+                value={email}
+                onChangeText={setEmail}
+                autoCapitalize="none"
+              />
+            </View>
           </View>
-        ))}
 
-        {schedule[dayIndex].timeSlots.length < 3 && (
-          <TouchableOpacity
-            style={styles.addTimeButton}
-            onPress={() => addTimeSlot(dayIndex)}
-          >
-            <Ionicons name="add" size={20} color="#4a90e2" />
-            <Text style={styles.addTimeText}>Adaugă interval</Text>
+          {/* Password input */}
+          <View style={styles.group}>
+            <Text style={styles.label}>Parola</Text>
+            <View style={styles.underlineContainer}>
+              <Ionicons
+                name="lock-open"
+                size={24}
+                color={Colors.DARKGREEN}
+                style={{ marginRight: 8 }}
+              />
+              <TextInput
+                style={[styles.inputField, { flex: 1 }]}
+                placeholder="Introdu parola"
+                secureTextEntry
+                value={password}
+                onChangeText={setPassword}
+              />
+            </View>
+          </View>
+
+          <Link href="/(public)/reset" asChild>
+            <TouchableOpacity style={{ marginBottom: 20, marginTop: -10 }}>
+              <Text
+                style={{ fontFamily: 'poppins', fontSize: 14, color: Colors.DARKGREEN }}
+              >
+                Ai uitat parola?
+              </Text>
+            </TouchableOpacity>
+          </Link>
+
+          {/* Login button */}
+          <TouchableOpacity style={styles.button} onPress={handleLogin}>
+            <Text style={styles.buttonText}>Login</Text>
           </TouchableOpacity>
-        )}
-      </View>
-    ))}
-  </View>
-)}
 
-</View>
+          {/* Register */}
+          <View style={{ marginTop: 20 }}>
+            <Text style={{ textAlign: 'center', fontSize: 16, fontFamily: 'poppins' }}>
+              Nu ai un cont?
+            </Text>
+            <Link href="/(public)/register" asChild>
+              <TouchableOpacity style={styles.registerButton}>
+                <Text style={styles.link}>Înregistrează-te</Text>
+              </TouchableOpacity>
+            </Link>
+          </View>
+
+          {/* Google Sign-in */}
+          <View style={{ marginTop: 70 }}>
+            <TouchableOpacity
+              onPress={handleGoogleLogin}
+              style={[styles.button, { backgroundColor: '#db4437' }]}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Text style={styles.buttonText}>Conectare cu Google</Text>
+                <Ionicons
+                  name="logo-google"
+                  size={24}
+                  color={Colors.WHITE}
+                  style={{ marginLeft: 8 }}
+                />
+              </View>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+
+      <Spinner
+        visible={loading}
+        textContent={'Se conectează...'}
+        textStyle={{ color: Colors.WHITE }}
+      />
+    </View>
+  );
+};
+
+
+
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    padding: 20,
+  },
+  loginHtml: {
+    width: '100%',
+    padding: 30,
+
+  },
+  loginTitle: {
+    fontSize: 28,
+    fontFamily: 'poppins-bold', // Use the Poppins font
+    textAlign: 'left',
+    marginTop: 20,
+    color: 'black'
+  },
+  loginForm: {
+    marginTop: 45,
+  },
+  group: {
+    marginBottom: 30,
+  },
+  underlineContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.GRAY,
+    paddingBottom: 5,
+  },
+  inputField: {
+    fontFamily: 'poppins',
+    fontSize: 16,
+    padding: 5,
+    color: '#000',
+  },
+  button: {
+    backgroundColor: Colors.GREEN,
+    padding: 15,
+    borderRadius: 25,
+    alignItems: 'center',
+  },
+  buttonText: {
+    color: Colors.WHITE,
+    fontSize: 16,
+    textTransform: 'uppercase',
+    fontFamily: 'Poppins', // Use the Poppins font
+  },
+  link: {
+    color: Colors.DARKGREEN,
+    marginVertical: 5,
+    fontSize: 16,
+    fontFamily: 'Poppins', // Use the Poppins font
+  },
+});
+
+

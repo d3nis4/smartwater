@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { getFirestore, doc, onSnapshot } from 'firebase/firestore';
-import { useUser } from '@clerk/clerk-react';
+import { getAuth } from 'firebase/auth';  // Importă pentru a accesa auth
 
 const Notifications = () => {
-  const { user } = useUser();
+  const auth = getAuth();  // Obține instanța de autentificare
+  const user = auth.currentUser;  // Obține utilizatorul autentificat
   const [notifications, setNotifications] = useState([]);
   const [systemStatus, setSystemStatus] = useState({
     moisture: '--',
@@ -15,9 +16,11 @@ const Notifications = () => {
   });
 
   useEffect(() => {
+    if (!user) return;  // Dacă nu există un utilizator, oprește execuția
+
     const db = getFirestore();
-    const userEmail = user?.primaryEmailAddress?.emailAddress;
-    
+    const userEmail = user.email; // Utilizează email-ul din Firebase
+
     if (!userEmail) return;
 
     // Fetch user document that contains both notifications and system status
@@ -95,7 +98,6 @@ const Notifications = () => {
         <View style={styles.statusRow}>
           <Ionicons name="calendar" size={20} color="#f39c12" />
           <Text style={styles.statusText}>Ultima actualizare: {systemStatus.lastUpdated}</Text>
-
         </View>
       </View>
 
