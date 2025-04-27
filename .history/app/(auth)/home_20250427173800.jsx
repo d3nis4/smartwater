@@ -1,9 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { getDatabase, onValue, update } from "firebase/database";
-import {
-  saveToRealtimeDatabase,
-  setupRealtimeListener,
-} from "../../functions/firebase";
+import { saveToRealtimeDatabase, setupRealtimeListener } from '../../functions/firebase';
 import { useAuth } from "../../functions";
 import {
   View,
@@ -13,22 +10,21 @@ import {
   TextInput,
   StyleSheet,
   TouchableOpacity,
-  ScrollView, ActivityIndicator
+  ScrollView,
 } from "react-native";
 import Feather from "@expo/vector-icons/Feather";
 import React, { useEffect, useState } from "react";
 import { Fontisto } from "@expo/vector-icons";
-import { Colors } from "../../constants/Colors";
+import { Colors } from "../constants/Colors";
 import { LinearGradient } from "expo-linear-gradient";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import Slider from "@react-native-community/slider";
 import { getAuth } from "firebase/auth";
-import { ref, get, set } from "firebase/database";
+import { ref, get,set } from "firebase/database";
 
 import { realtimeDb } from "../../functions/FirebaseConfig";
 
 const Home = () => {
-  const [loading, setLoading] = useState(true);
   const [user, setUser] = useState(null);
   const [userId, setUserId] = useState(null);
   const [moisture, setMoisture] = useState(null);
@@ -39,15 +35,13 @@ const Home = () => {
   const [autoThreshold, setAutoThreshold] = useState(30);
   const [savedAutoThreshold, setSavedAutoThreshold] = useState(30);
   const [scheduledDays, setScheduledDays] = useState([]);
-  const [pumpData, setPumpData] = useState(null);
-  
 
   const handlePumpStart = async () => {
     if (!user?.email) {
       console.error("Nu există utilizator autentificat");
       return;
     }
-
+  
     try {
       const safeEmail = getSafeEmail(user.email);
       const pumpStatusRef = ref(db, `users/${safeEmail}/controls/pumpStatus`);
@@ -57,13 +51,13 @@ const Home = () => {
       console.error("Eroare la pornirea pompei:", error);
     }
   };
-
+  
   const handlePumpStop = async () => {
     if (!user?.email) {
       console.error("Nu există utilizator autentificat");
       return;
     }
-
+  
     try {
       const safeEmail = getSafeEmail(user.email);
       const pumpStatusRef = ref(db, `users/${safeEmail}/controls/pumpStatus`);
@@ -73,6 +67,7 @@ const Home = () => {
       console.error("Eroare la oprirea pompei:", error);
     }
   };
+  
 
   const [schedule, setSchedule] = useState(
     Array(7)
@@ -138,11 +133,11 @@ const Home = () => {
   useEffect(() => {
     const unsubscribeAuth = auth.onAuthStateChanged((user) => {
       setUser(user);
-
+      
       if (user?.email) {
         const safeEmail = getSafeEmail(user.email);
         const userRef = ref(db, `users/${safeEmail}`);
-
+  
         const unsubscribeRealtime = onValue(userRef, (snapshot) => {
           const data = snapshot.val();
           if (data) {
@@ -153,35 +148,25 @@ const Home = () => {
             if (data.temperature !== undefined) {
               setTemperature(data.temperature);
             }
-
+            
             // Actualizează controalele
             if (data.controls) {
               setPumpMode(data.controls.pumpMode || "manual");
               setPumpStatus(data.controls.pumpStatus || "off");
               setAutoThreshold(data.controls.pragUmiditate || 30);
             }
-
+  
             // Actualizează programul
             if (data.program) {
-              const days = [
-                "Luni",
-                "Marti",
-                "Miercuri",
-                "Joi",
-                "Vineri",
-                "Sambata",
-                "Duminica",
-              ];
-              const newSchedule = Array(7)
-                .fill()
-                .map(() => ({ timeSlots: [] }));
-
+              const days = ["Luni", "Marti", "Miercuri", "Joi", "Vineri", "Sambata", "Duminica"];
+              const newSchedule = Array(7).fill().map(() => ({ timeSlots: [] }));
+              
               days.forEach((day, index) => {
                 if (data.program[day]) {
                   newSchedule[index].timeSlots = data.program[day]
-                    .filter((time) => time.includes("-"))
-                    .map((time) => {
-                      const [startTime, endTime] = time.split("-");
+                    .filter(time => time.includes('-'))
+                    .map(time => {
+                      const [startTime, endTime] = time.split('-');
                       return { startTime, endTime };
                     });
                 }
@@ -190,117 +175,96 @@ const Home = () => {
             }
           }
         });
-
+  
         return () => unsubscribeRealtime();
       }
     });
-
+  
     return () => unsubscribeAuth();
   }, []);
 
-  // Înlocuiește useEffect-ul existent pentru încărcarea datelor cu:
-  useEffect(() => {
-    if (!user?.email) return;
+// Înlocuiește useEffect-ul existent pentru încărcarea datelor cu:
+useEffect(() => {
+  if (!user?.email) return;
 
-    const safeEmail = getSafeEmail(user.email);
+  const safeEmail = getSafeEmail(user.email);
+  
+  // 1. Ascultă pentru modificări în Realtime Database
+  const unsubscribeRealtime = setupRealtimeListener(user.email, (data) => {
+    if (data.soilHumidity !== undefined) {
+      setMoisture(data.soilHumidity);
+    }
+    if (data.temperature !== undefined) {
+      setTemperature(data.temperature);
+    }
+    
+    
+    if (data.controls) {
+      setPumpMode(data.controls.pumpMode || "manual");
+      setPumpStatus(data.controls.pumpStatus || "off");
+      setAutoThreshold(data.controls.pragUmiditate || 30);
+    }
 
-    // 1. Ascultă pentru modificări în Realtime Database
-    const unsubscribeRealtime = setupRealtimeListener(user.email, (data) => {
-      if (data.soilHumidity !== undefined) {
-        setMoisture(data.soilHumidity);
-      }
-      if (data.temperature !== undefined) {
-        setTemperature(data.temperature);
-      }
+    if (data.program) {
+      const newSchedule = Array(7).fill().map(() => ({ timeSlots: [] }));
+      Object.keys(data.program).forEach(day => {
+        const dayIndex = ["Luni", "Marti", "Miercuri", "Joi", "Vineri", "Sambata", "Duminica"].indexOf(day);
+        if (dayIndex >= 0) {
+          newSchedule[dayIndex].timeSlots = data.program[day]
+            .filter(time => time.includes('-'))
+            .map(time => {
+              const [startTime, endTime] = time.split('-');
+              return { startTime, endTime };
+            });
+        }
+      });
+      setSchedule(newSchedule);
+    }
+  });
 
-      if (data.controls) {
-        setPumpMode(data.controls.pumpMode || "manual");
-        setPumpStatus(data.controls.pumpStatus || "off");
-        setAutoThreshold(data.controls.pragUmiditate || 30);
-      }
+  return () => {
+    unsubscribeRealtime();
+  };
+}, [user]);
 
-      if (data.program) {
-        const newSchedule = Array(7)
-          .fill()
-          .map(() => ({ timeSlots: [] }));
-        Object.keys(data.program).forEach((day) => {
-          const dayIndex = [
-            "Luni",
-            "Marti",
-            "Miercuri",
-            "Joi",
-            "Vineri",
-            "Sambata",
-            "Duminica",
-          ].indexOf(day);
-          if (dayIndex >= 0) {
-            newSchedule[dayIndex].timeSlots = data.program[day]
-              .filter((time) => time.includes("-"))
-              .map((time) => {
-                const [startTime, endTime] = time.split("-");
-                return { startTime, endTime };
-              });
-          }
-        });
-        setSchedule(newSchedule);
-      }
-    });
-
-    return () => {
-      unsubscribeRealtime();
-    };
-  }, [user]);
 
   // Save all changes to Firestore
   const saveSettings = async () => {
     if (!user?.email) return;
-
+  
     try {
       const safeEmail = getSafeEmail(user.email);
       const userRef = ref(db, `users/${safeEmail}`);
-
+  
       await update(userRef, {
         controls: {
           pumpMode,
           pumpStatus,
-          pragUmiditate: autoThreshold,
+          pragUmiditate: autoThreshold
         },
         program: {
-          Luni: schedule[0].timeSlots
-            .filter((slot) => slot.startTime)
-            .map((slot) => `${slot.startTime}-${slot.endTime}`),
-          Marti: schedule[1].timeSlots
-            .filter((slot) => slot.startTime)
-            .map((slot) => `${slot.startTime}-${slot.endTime}`),
-          Miercuri: schedule[2].timeSlots
-            .filter((slot) => slot.startTime)
-            .map((slot) => `${slot.startTime}-${slot.endTime}`),
-          Joi: schedule[3].timeSlots
-            .filter((slot) => slot.startTime)
-            .map((slot) => `${slot.startTime}-${slot.endTime}`),
-          Vineri: schedule[4].timeSlots
-            .filter((slot) => slot.startTime)
-            .map((slot) => `${slot.startTime}-${slot.endTime}`),
-          Sambata: schedule[5].timeSlots
-            .filter((slot) => slot.startTime)
-            .map((slot) => `${slot.startTime}-${slot.endTime}`),
-          Duminica: schedule[6].timeSlots
-            .filter((slot) => slot.startTime)
-            .map((slot) => `${slot.startTime}-${slot.endTime}`),
+          Luni: schedule[0].timeSlots.filter(slot => slot.startTime).map(slot => `${slot.startTime}-${slot.endTime}`),
+          Marti: schedule[1].timeSlots.filter(slot => slot.startTime).map(slot => `${slot.startTime}-${slot.endTime}`),
+          Miercuri: schedule[2].timeSlots.filter(slot => slot.startTime).map(slot => `${slot.startTime}-${slot.endTime}`),
+          Joi: schedule[3].timeSlots.filter(slot => slot.startTime).map(slot => `${slot.startTime}-${slot.endTime}`),
+          Vineri: schedule[4].timeSlots.filter(slot => slot.startTime).map(slot => `${slot.startTime}-${slot.endTime}`),
+          Sambata: schedule[5].timeSlots.filter(slot => slot.startTime).map(slot => `${slot.startTime}-${slot.endTime}`),
+          Duminica: schedule[6].timeSlots.filter(slot => slot.startTime).map(slot => `${slot.startTime}-${slot.endTime}`)
         },
-        lastUpdated: Date.now(),
+        lastUpdated: Date.now()
       });
-
+  
       // Actualizează stările salvate
       setSavedPumpMode(pumpMode);
       setSavedAutoThreshold(autoThreshold);
       setSavedSchedule(schedule);
-
+      
       console.log("Setări salvate cu succes!");
     } catch (error) {
       console.error("Eroare la salvarea setărilor:", error);
     }
   };
+
 
   // Handle pump mode change
   const handlePumpModeChange = (newMode) => {
@@ -328,6 +292,7 @@ const Home = () => {
     newSchedule[dayIndex].timeSlots.splice(slotIndex, 1); // Șterge intervalul
     setSchedule(newSchedule); // Actualizează starea cu noul program
   };
+ 
 
   const handleTimeChange = (dayIndex, slotIndex, field, value) => {
     if (/^([0-1]?[0-9]|2[0-3]):?([0-5][0-9])?$/.test(value) || value === "") {
@@ -337,41 +302,23 @@ const Home = () => {
     }
   };
 
-  // fetch umiditate si stare pompa
+  // fetch umiditate
   useEffect(() => {
     if (!user || !user.email) return;
-  
+
     const safeEmail = getSafeEmail(user.email);
-  
-    // Subscribe to soilHumidity
     const moistureRef = ref(realtimeDb, `users/${safeEmail}/soilHumidity`);
-    const moistureUnsubscribe = onValue(moistureRef, (snapshot) => {
+
+    const unsubscribe = onValue(moistureRef, (snapshot) => {
       const moistureValue = snapshot.val();
       if (moistureValue !== null) {
         setMoisture(moistureValue);
         console.log("Umiditate actualizată:", moistureValue);
       }
     });
-  
-    // Subscribe to pumpStatus
-    const pumpStatusRef = ref(realtimeDb, `users/${safeEmail}/controls/pumpStatus`);
-    const pumpStatusUnsubscribe = onValue(pumpStatusRef, (snapshot) => {
-      const pumpStatusValue = snapshot.val();
-      if (pumpStatusValue !== null) {
-        setPumpData({ pumpStatus: pumpStatusValue });  
-        setPumpStatus(pumpStatusValue);
-        console.log("Statusul pompei actualizat din baza de date:", pumpStatusValue);
-      }
-    });
-  
-    // Cleanup function to unsubscribe when the component unmounts or user changes
-    return () => {
-      moistureUnsubscribe();
-      pumpStatusUnsubscribe();
-    };
+
+    return () => unsubscribe(); // Cleanup la unmount
   }, [user]);
-  
- 
 
   const email = user?.email || ""; // Folosim operatorul de coalescență pentru a evita erorile dacă user sau email sunt null/undefined
   const username = email.split("@")[0]; // Împarte email-ul la '@' și ia prima parte
@@ -401,59 +348,95 @@ const Home = () => {
           />
         </View>
       </LinearGradient>
-
+    
       {/* Dashboard Cards */}
-      <View style={styles.cardsContainer}>
-        {/* Moisture Card */}
-        <View style={[styles.card, styles.moistureCard]}>
-          <View style={styles.cardIcon}>
-            <Fontisto name="blood-drop" size={24} color="#4a90e2" />
-          </View>
-          <Text style={styles.cardLabel}>Umiditate sol</Text>
-          <Text style={styles.cardValue}>
-            {moisture !== null ? `${moisture}%` : "--"}
-          </Text>
-          <Text style={styles.cardStatus}>
-            {moisture > 60 ? "Optim" : moisture > 30 ? "Uscat" : "Foarte uscat"}
-          </Text>
-        </View>
-
-        {/* Temperature Card */}
-        <View style={[styles.card, styles.tempCard]}>
-          <View style={styles.cardIcon}>
-            <Ionicons name="thermometer" size={24} color="#e74c3c" />
-          </View>
-          <Text style={styles.cardLabel}>Temperatură</Text>
-          <Text style={styles.cardValue}>
-            {temperature !== null
-              ? `${
-                  parseFloat(temperature) % 1 === 0
-                    ? temperature + "°C"
-                    : Number(temperature).toFixed(2) + "°C"
-                }`
-              : "--"}
+      <View style={styles.topRow}>
+    {/* Pump Status Card */}
+    <View style={[styles.card, styles.pumpCard]}>
+      <View style={styles.cardHeader}>
+        <MaterialCommunityIcons 
+          name="water-pump" 
+          size={24} 
+          color={pumpStatus === "on" ? Colors.GREEN : Colors.RED} 
+        />
+        <Text style={styles.cardLabel}>Stare Pompă</Text>
+      </View>
+      <View style={styles.pumpStatusContainer}>
+        <View style={[
+          styles.pumpStatusIndicator,
+          pumpStatus === "on" ? styles.pumpOn : styles.pumpOff,
+        ]}>
+          <Text style={styles.pumpStatusText}>
+            {pumpStatus === "on" ? "ACTIVĂ" : "INACTIVĂ"}
           </Text>
         </View>
       </View>
-      <TouchableOpacity onPress={handleRefresh} style={styles.refreshButton}>
-        <Text style={styles.refreshText}>
-          <Feather name="refresh-ccw" size={24} color="black" />
+      <Text style={styles.pumpStatusSubtext}>
+        {pumpStatus === "on" ? "Pompa funcționează" : "Pompa este oprită"}
+      </Text>
+    </View>
+
+    {/* Temperature Card */}
+    <View style={[styles.card, styles.tempCard]}>
+      <View style={styles.cardHeader}>
+        <Ionicons name="thermometer" size={24} color="#e74c3c" />
+        <Text style={styles.cardLabel}>Temperatură</Text>
+      </View>
+      <Text style={styles.cardValue}>
+        {temperature !== null
+          ? `${parseFloat(temperature) % 1 === 0
+              ? temperature + "°C"
+              : Number(temperature).toFixed(1) + "°C"}`
+          : "--"}
+      </Text>
+      <Text style={styles.cardSubtext}>
+        {temperature > 30 ? "Cald" : temperature > 20 ? "Moderat" : "Răcoros"}
+      </Text>
+    </View>
+  </View>
+
+  {/* Moisture Card - Full Width */}
+  <View style={[styles.card, styles.moistureCard]}>
+    <View style={styles.cardHeader}>
+      <Fontisto name="blood-drop" size={24} color="#4a90e2" />
+      <Text style={styles.cardLabel}>Umiditate sol</Text>
+    </View>
+    <View style={styles.moistureContent}>
+      <Text style={styles.moistureValue}>
+        {moisture !== null ? `${moisture}%` : "--"}
+      </Text>
+      <View style={styles.moistureIndicatorContainer}>
+        <View style={styles.moistureIndicatorBackground}>
+          <View 
+            style={[
+              styles.moistureIndicatorFill,
+              {width: `${moisture}%`}
+            ]}
+          />
+        </View>
+        <Text style={styles.moistureStatus}>
+          {moisture > 60 
+            ? "Optimă" 
+            : moisture > 30 
+              ? "Uscat" 
+              : "Foarte uscat"}
         </Text>
-      </TouchableOpacity>
+      </View>
+    </View>
+  </View> 
+      <TouchableOpacity
+            onPress={handleRefresh}
+            style={styles.refreshButton}
+          >
+            <Text style={styles.refreshText}>
+              <Feather name="refresh-ccw" size={24} color="black" />
+            </Text>
+          </TouchableOpacity> 
 
       {/* Pump Control Section */}
       <View style={styles.pumpContainer}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Control pompă de apă</Text>
-          <View style={[
-          styles.pumpStatusIndicator,
-          pumpData?.pumpStatus === "on" ? styles.pumpOn : styles.pumpOff
-        ]}>
-          <Text style={styles.pumpStatusText}>
-            {pumpData?.pumpStatus === "on" ? "ACTIVĂ" : "INACTIVĂ"}
-          </Text>
-        </View>
-        </View>
+        <Text style={styles.sectionTitle}>Control pompă de apă</Text>
+
         {/* Selector mod de funcționare */}
         <View style={styles.modeSelector}>
           <TouchableOpacity
@@ -526,8 +509,9 @@ const Home = () => {
         {/* Conținut în funcție de modul selectat */}
         {pumpMode === "manual" && (
           <View style={styles.pumpStatusContainer}>
+        
             <View style={styles.pumpButtons}>
-              <TouchableOpacity
+            <TouchableOpacity
                 style={[styles.pumpButton, styles.pumpOnButton]}
                 onPress={handlePumpStart}
               >
@@ -765,6 +749,147 @@ const Home = () => {
 export default Home;
 
 const styles = StyleSheet.create({
+
+
+  container: {
+    flex: 1,
+    backgroundColor: Colors.PRIMARY,
+  },
+  header: {
+    padding: 20,
+    paddingTop: 50,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+  },
+  headerContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  userInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  welcomeText: {
+    fontFamily: 'poppins',
+    fontSize: 16,
+    color: Colors.WHITE,
+  },
+  userName: {
+    fontFamily: 'poppins-bold',
+    fontSize: 20,
+    color: Colors.WHITE,
+  },
+  logo: {
+    width: 50,
+    height: 50,
+    resizeMode: 'contain',
+  },
+  topRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 15,
+    marginTop: 20,
+  },
+  card: {
+    borderRadius: 15,
+    padding: 20,
+    marginBottom: 15,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 3,
+    backgroundColor: Colors.WHITE,
+  },
+  pumpCard: {
+    width: '48%',
+  },
+  tempCard: {
+    width: '48%',
+  },
+  moistureCard: {
+    marginHorizontal: 15,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  cardLabel: {
+    fontFamily: 'poppins-semibold',
+    fontSize: 16,
+    marginLeft: 10,
+    color: Colors.DARKGREEN,
+  },
+  cardValue: {
+    fontFamily: 'poppins-bold',
+    fontSize: 28,
+    color: Colors.DARK,
+    marginVertical: 5,
+  },
+  pumpStatusContainer: {
+    alignItems: 'center',
+    marginVertical: 10,
+  },
+  pumpStatusIndicator: {
+    paddingVertical: 8,
+    paddingHorizontal: 15,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+ 
+  pumpOff: {
+    backgroundColor: Colors.LIGHTRED,
+  },
+  pumpStatusText: {
+    fontFamily: 'poppins-bold',
+    fontSize: 14,
+    color: Colors.WHITE,
+  },
+  pumpStatusSubtext: {
+    fontFamily: 'poppins',
+    fontSize: 12,
+    color: Colors.DARKGRAY,
+    textAlign: 'center',
+  },
+  cardSubtext: {
+    fontFamily: 'poppins',
+    fontSize: 14,
+    color: Colors.DARKGRAY,
+  },
+  moistureContent: {
+    alignItems: 'center',
+  },
+  moistureValue: {
+    fontFamily: 'poppins-bold',
+    fontSize: 32,
+    color: Colors.BLUE,
+    marginBottom: 10,
+  },
+  moistureIndicatorContainer: {
+    width: '100%',
+    alignItems: 'center',
+  },
+  moistureIndicatorBackground: {
+    height: 10,
+    width: '100%',
+    backgroundColor: Colors.LIGHTGRAY,
+    borderRadius: 5,
+    overflow: 'hidden',
+    marginBottom: 5,
+  },
+  moistureIndicatorFill: {
+    height: '100%',
+    backgroundColor: Colors.BLUE,
+    borderRadius: 5,
+  },
+  moistureStatus: {
+    fontFamily: 'poppins-semibold',
+    fontSize: 14,
+    color: Colors.DARK,
+  },
   container: {
     flex: 1,
     backgroundColor: "#f5f5f5",
@@ -891,41 +1016,23 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 3,
   },
-  sectionHeader: {
-    // 👈 Noul container pentru titlu + status
-    flexDirection: "row",
-    alignItems: "center", // Aliniază pe verticală
-    justifyContent: "space-between", // Spațiere între ele
-    marginBottom: 15,
-  },
   sectionTitle: {
     fontFamily: "poppins-bold",
     fontSize: 18,
     color: "#333",
+    marginBottom: 15,
   },
-  pumpStatusIndicator: {
-    paddingVertical: 5,
-    paddingHorizontal: 12,
-    borderRadius: 15,
-  },
-  pumpOn: {
-    backgroundColor: Colors.LIGHT_GREEN, // Sau "#4CAF50"
-  },
-  pumpOff: {
-    backgroundColor: Colors.RED, // Sau "#F44336"
-  },
-  pumpStatusText: {
-    fontFamily: "poppins-bold",
-    fontSize: 12,
-    color: "#fff",
-    textTransform: "uppercase",
+  pumpStatusContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
 
-  pumpStatusText: {
-    fontFamily: "poppins-bold",
-    fontSize: 14,
-    color: "#333",
+  pumpOn: {
+    backgroundColor: "rgba(46, 204, 113, 0.2)",
   },
+
+
   pumpButtons: {
     flexDirection: "row",
     gap: 10,

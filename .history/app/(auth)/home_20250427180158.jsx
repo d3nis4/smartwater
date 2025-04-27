@@ -358,7 +358,6 @@ const Home = () => {
     const pumpStatusUnsubscribe = onValue(pumpStatusRef, (snapshot) => {
       const pumpStatusValue = snapshot.val();
       if (pumpStatusValue !== null) {
-        setPumpData({ pumpStatus: pumpStatusValue });  
         setPumpStatus(pumpStatusValue);
         console.log("Statusul pompei actualizat din baza de date:", pumpStatusValue);
       }

@@ -3,7 +3,7 @@
     "activeCommit": 0,
     "commits": [
         {
-            "activePatchIndex": 1,
+            "activePatchIndex": 14,
             "patches": [
                 {
                     "date": 1745762680730,
@@ -12,6 +12,58 @@
                 {
                     "date": 1745762693937,
                     "content": "Index: \n===================================================================\n--- \n+++ \n@@ -1,9 +1,6 @@\n-/**\r\n- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.\r\n- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.\r\n- */\r\n \r\n+\r\n const tintColorLight = '#0a7ea4';\r\n const tintColorDark = '#fff';\r\n \r\n export const Colors = {\r\n"
+                },
+                {
+                    "date": 1745764967786,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -8,8 +8,9 @@\n   PRIMARY: '#dfe8df',\r\n   GRAY: '#6c757d',\r\n   GREEN:'#608a60',\r\n   DARKGREEN:\"#263726\",\r\n+  RED:\"\"\r\n   light: {\r\n     text: '#11181C',\r\n     background: '#fff',\r\n     tint: tintColorLight,\r\n"
+                },
+                {
+                    "date": 1745764972939,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -8,9 +8,9 @@\n   PRIMARY: '#dfe8df',\r\n   GRAY: '#6c757d',\r\n   GREEN:'#608a60',\r\n   DARKGREEN:\"#263726\",\r\n-  RED:\"\"\r\n+  RED:\"rgba(231, 76, 60, 0.2)\"\r\n   light: {\r\n     text: '#11181C',\r\n     background: '#fff',\r\n     tint: tintColorLight,\r\n"
+                },
+                {
+                    "date": 1745764986284,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -6,11 +6,12 @@\n export const Colors = {\r\n   WHITE: '#eff3ef',\r\n   PRIMARY: '#dfe8df',\r\n   GRAY: '#6c757d',\r\n-  GREEN:'#608a60',\r\n+  GREEN:'rgba(46, 204, 113, 0.2)',\r\n   DARKGREEN:\"#263726\",\r\n-  RED:\"rgba(231, 76, 60, 0.2)\"\r\n+  RED:\"rgba(231, 76, 60, 0.2)\",\r\n+\r\n   light: {\r\n     text: '#11181C',\r\n     background: '#fff',\r\n     tint: tintColorLight,\r\n"
+                },
+                {
+                    "date": 1745764994732,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -6,12 +6,12 @@\n export const Colors = {\r\n   WHITE: '#eff3ef',\r\n   PRIMARY: '#dfe8df',\r\n   GRAY: '#6c757d',\r\n-  GREEN:'rgba(46, 204, 113, 0.2)',\r\n+  GREEN:'#608a60',\r\n   DARKGREEN:\"#263726\",\r\n   RED:\"rgba(231, 76, 60, 0.2)\",\r\n-\r\n+  \r\n   light: {\r\n     text: '#11181C',\r\n     background: '#fff',\r\n     tint: tintColorLight,\r\n"
+                },
+                {
+                    "date": 1745765001622,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -9,9 +9,9 @@\n   GRAY: '#6c757d',\r\n   GREEN:'#608a60',\r\n   DARKGREEN:\"#263726\",\r\n   RED:\"rgba(231, 76, 60, 0.2)\",\r\n-  \r\n+  L\r\n   light: {\r\n     text: '#11181C',\r\n     background: '#fff',\r\n     tint: tintColorLight,\r\n"
+                },
+                {
+                    "date": 1745765008012,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -9,9 +9,9 @@\n   GRAY: '#6c757d',\r\n   GREEN:'#608a60',\r\n   DARKGREEN:\"#263726\",\r\n   RED:\"rgba(231, 76, 60, 0.2)\",\r\n-  L\r\n+  LIGHT_GREEN:\"rgba(46, 204, 113, 0.2)\"\r\n   light: {\r\n     text: '#11181C',\r\n     background: '#fff',\r\n     tint: tintColorLight,\r\n"
+                },
+                {
+                    "date": 1745765104208,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -1,30 +0,0 @@\n-\r\n-\r\n-const tintColorLight = '#0a7ea4';\r\n-const tintColorDark = '#fff';\r\n-\r\n-export const Colors = {\r\n-  WHITE: '#eff3ef',\r\n-  PRIMARY: '#dfe8df',\r\n-  GRAY: '#6c757d',\r\n-  GREEN:'#608a60',\r\n-  DARKGREEN:\"#263726\",\r\n-  RED:\"rgba(231, 76, 60, 0.2)\",\r\n-  LIGHT_GREEN:\"rgba(46, 204, 113, 0.2)\"\r\n-  light: {\r\n-    text: '#11181C',\r\n-    background: '#fff',\r\n-    tint: tintColorLight,\r\n-    icon: '#687076',\r\n-    tabIconDefault: '#687076',\r\n-    tabIconSelected: tintColorLight,\r\n-  },\r\n-  dark: {\r\n-    text: '#ECEDEE',\r\n-    background: '#151718',\r\n-    tint: tintColorDark,\r\n-    icon: '#9BA1A6',\r\n-    tabIconDefault: '#9BA1A6',\r\n-    tabIconSelected: tintColorDark,\r\n-  },\r\n-};\n\\ No newline at end of file\n"
+                },
+                {
+                    "date": 1745765110229,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -0,0 +1,30 @@\n+\r\n+\r\n+const tintColorLight = '#0a7ea4';\r\n+const tintColorDark = '#fff';\r\n+\r\n+export const Colors = {\r\n+  WHITE: '#eff3ef',\r\n+  PRIMARY: '#dfe8df',\r\n+  GRAY: '#6c757d',\r\n+  GREEN:'#608a60',\r\n+  DARKGREEN:\"#263726\",\r\n+  RED:\"rgba(231, 76, 60, 0.2)\",\r\n+  LIGHT_GREEN:\"rgba(46, 204, 113, 0.2)\",\r\n+  light: {\r\n+    text: '#11181C',\r\n+    background: '#fff',\r\n+    tint: tintColorLight,\r\n+    icon: '#687076',\r\n+    tabIconDefault: '#687076',\r\n+    tabIconSelected: tintColorLight,\r\n+  },\r\n+  dark: {\r\n+    text: '#ECEDEE',\r\n+    background: '#151718',\r\n+    tint: tintColorDark,\r\n+    icon: '#9BA1A6',\r\n+    tabIconDefault: '#9BA1A6',\r\n+    tabIconSelected: tintColorDark,\r\n+  },\r\n+};\n\\ No newline at end of file\n"
+                },
+                {
+                    "date": 1745765119121,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -10,8 +10,9 @@\n   GREEN:'#608a60',\r\n   DARKGREEN:\"#263726\",\r\n   RED:\"rgba(231, 76, 60, 0.2)\",\r\n   LIGHT_GREEN:\"rgba(46, 204, 113, 0.2)\",\r\n+  WHITEGREEN:\"\"\r\n   light: {\r\n     text: '#11181C',\r\n     background: '#fff',\r\n     tint: tintColorLight,\r\n"
+                },
+                {
+                    "date": 1745765125818,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -10,9 +10,9 @@\n   GREEN:'#608a60',\r\n   DARKGREEN:\"#263726\",\r\n   RED:\"rgba(231, 76, 60, 0.2)\",\r\n   LIGHT_GREEN:\"rgba(46, 204, 113, 0.2)\",\r\n-  WHITEGREEN:\"\"\r\n+  WHITEGREEN:\"\"rgba(46, 204, 113, 0.2)\"\",\r\n   light: {\r\n     text: '#11181C',\r\n     background: '#fff',\r\n     tint: tintColorLight,\r\n"
+                },
+                {
+                    "date": 1745765134321,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -10,9 +10,9 @@\n   GREEN:'#608a60',\r\n   DARKGREEN:\"#263726\",\r\n   RED:\"rgba(231, 76, 60, 0.2)\",\r\n   LIGHT_GREEN:\"rgba(46, 204, 113, 0.2)\",\r\n-  WHITEGREEN:\"\"rgba(46, 204, 113, 0.2)\"\",\r\n+  WHITEGREEN:\"rgba(203, 226, 213, 0)\",\r\n   light: {\r\n     text: '#11181C',\r\n     background: '#fff',\r\n     tint: tintColorLight,\r\n"
+                },
+                {
+                    "date": 1745765141171,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -10,9 +10,9 @@\n   GREEN:'#608a60',\r\n   DARKGREEN:\"#263726\",\r\n   RED:\"rgba(231, 76, 60, 0.2)\",\r\n   LIGHT_GREEN:\"rgba(46, 204, 113, 0.2)\",\r\n-  WHITEGREEN:\"rgba(203, 226, 213, 0)\",\r\n+  WHITEGREEN:\"rgba(125, 212, 161, 0.4)\",\r\n   light: {\r\n     text: '#11181C',\r\n     background: '#fff',\r\n     tint: tintColorLight,\r\n"
+                },
+                {
+                    "date": 1745765147114,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -10,9 +10,9 @@\n   GREEN:'#608a60',\r\n   DARKGREEN:\"#263726\",\r\n   RED:\"rgba(231, 76, 60, 0.2)\",\r\n   LIGHT_GREEN:\"rgba(46, 204, 113, 0.2)\",\r\n-  WHITEGREEN:\"rgba(125, 212, 161, 0.4)\",\r\n+  WHITEGREEN:\"rgba(112, 223, 159, 0.53)\",\r\n   light: {\r\n     text: '#11181C',\r\n     background: '#fff',\r\n     tint: tintColorLight,\r\n"
                 }
             ],
             "date": 1745762680730,

@@ -41,6 +41,25 @@ const Home = () => {
   const [scheduledDays, setScheduledDays] = useState([]);
   const [pumpData, setPumpData] = useState(null);
   
+  useEffect(() => {
+    if (!user?.email) return;
+  
+    const safeEmail = getSafeEmail(user.email);
+    const pumpStatusRef = ref(realtimeDb, `users/${safeEmail}/controls/pumpStatus`);
+  
+    const unsubscribe = onValue(pumpStatusRef, (snapshot) => {
+      const pumpStatusValue = snapshot.val();
+      if (pumpStatusValue !== null) {
+        setPumpStatus(pumpStatusValue);
+        console.log("Statusul pompei actualizat din baza de date:", pumpStatusValue); // Verifică ce valoare se citește
+      }
+    });
+  
+    return () => unsubscribe();
+  }, [user]);
+  ;
+
+ 
 
   const handlePumpStart = async () => {
     if (!user?.email) {
@@ -337,41 +356,23 @@ const Home = () => {
     }
   };
 
-  // fetch umiditate si stare pompa
+  // fetch umiditate
   useEffect(() => {
     if (!user || !user.email) return;
-  
+
     const safeEmail = getSafeEmail(user.email);
-  
-    // Subscribe to soilHumidity
     const moistureRef = ref(realtimeDb, `users/${safeEmail}/soilHumidity`);
-    const moistureUnsubscribe = onValue(moistureRef, (snapshot) => {
+
+    const unsubscribe = onValue(moistureRef, (snapshot) => {
       const moistureValue = snapshot.val();
       if (moistureValue !== null) {
         setMoisture(moistureValue);
         console.log("Umiditate actualizată:", moistureValue);
       }
     });
-  
-    // Subscribe to pumpStatus
-    const pumpStatusRef = ref(realtimeDb, `users/${safeEmail}/controls/pumpStatus`);
-    const pumpStatusUnsubscribe = onValue(pumpStatusRef, (snapshot) => {
-      const pumpStatusValue = snapshot.val();
-      if (pumpStatusValue !== null) {
-        setPumpData({ pumpStatus: pumpStatusValue });  
-        setPumpStatus(pumpStatusValue);
-        console.log("Statusul pompei actualizat din baza de date:", pumpStatusValue);
-      }
-    });
-  
-    // Cleanup function to unsubscribe when the component unmounts or user changes
-    return () => {
-      moistureUnsubscribe();
-      pumpStatusUnsubscribe();
-    };
+
+    return () => unsubscribe(); // Cleanup la unmount
   }, [user]);
-  
- 
 
   const email = user?.email || ""; // Folosim operatorul de coalescență pentru a evita erorile dacă user sau email sunt null/undefined
   const username = email.split("@")[0]; // Împarte email-ul la '@' și ia prima parte

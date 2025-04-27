@@ -337,38 +337,38 @@ const Home = () => {
     }
   };
 
-  // fetch umiditate si stare pompa
+  // fetch umiditate
   useEffect(() => {
     if (!user || !user.email) return;
-  
+
     const safeEmail = getSafeEmail(user.email);
-  
-    // Subscribe to soilHumidity
     const moistureRef = ref(realtimeDb, `users/${safeEmail}/soilHumidity`);
-    const moistureUnsubscribe = onValue(moistureRef, (snapshot) => {
+
+    const unsubscribe = onValue(moistureRef, (snapshot) => {
       const moistureValue = snapshot.val();
       if (moistureValue !== null) {
         setMoisture(moistureValue);
         console.log("Umiditate actualizată:", moistureValue);
       }
     });
+
+    return () => unsubscribe(); // Cleanup la unmount
+  }, [user]);
+  useEffect(() => {
+    if (!user?.email) return;
   
-    // Subscribe to pumpStatus
+    const safeEmail = getSafeEmail(user.email);
     const pumpStatusRef = ref(realtimeDb, `users/${safeEmail}/controls/pumpStatus`);
-    const pumpStatusUnsubscribe = onValue(pumpStatusRef, (snapshot) => {
+  
+    const unsubscribe = onValue(pumpStatusRef, (snapshot) => {
       const pumpStatusValue = snapshot.val();
       if (pumpStatusValue !== null) {
-        setPumpData({ pumpStatus: pumpStatusValue });  
         setPumpStatus(pumpStatusValue);
-        console.log("Statusul pompei actualizat din baza de date:", pumpStatusValue);
+        console.log("Statusul pompei actualizat din baza de date:", pumpStatusValue); // Verifică ce valoare se citește
       }
     });
   
-    // Cleanup function to unsubscribe when the component unmounts or user changes
-    return () => {
-      moistureUnsubscribe();
-      pumpStatusUnsubscribe();
-    };
+    return () => unsubscribe();
   }, [user]);
   
  

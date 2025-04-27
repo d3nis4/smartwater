@@ -1,9 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { getDatabase, onValue, update } from "firebase/database";
-import {
-  saveToRealtimeDatabase,
-  setupRealtimeListener,
-} from "../../functions/firebase";
+import { saveToRealtimeDatabase, setupRealtimeListener } from '../../functions/firebase';
 import { useAuth } from "../../functions";
 import {
   View,
@@ -13,7 +10,7 @@ import {
   TextInput,
   StyleSheet,
   TouchableOpacity,
-  ScrollView, ActivityIndicator
+  ScrollView,
 } from "react-native";
 import Feather from "@expo/vector-icons/Feather";
 import React, { useEffect, useState } from "react";
@@ -23,12 +20,11 @@ import { LinearGradient } from "expo-linear-gradient";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import Slider from "@react-native-community/slider";
 import { getAuth } from "firebase/auth";
-import { ref, get, set } from "firebase/database";
+import { ref, get,set } from "firebase/database";
 
 import { realtimeDb } from "../../functions/FirebaseConfig";
 
 const Home = () => {
-  const [loading, setLoading] = useState(true);
   const [user, setUser] = useState(null);
   const [userId, setUserId] = useState(null);
   const [moisture, setMoisture] = useState(null);
@@ -39,15 +35,13 @@ const Home = () => {
   const [autoThreshold, setAutoThreshold] = useState(30);
   const [savedAutoThreshold, setSavedAutoThreshold] = useState(30);
   const [scheduledDays, setScheduledDays] = useState([]);
-  const [pumpData, setPumpData] = useState(null);
-  
 
   const handlePumpStart = async () => {
     if (!user?.email) {
       console.error("Nu există utilizator autentificat");
       return;
     }
-
+  
     try {
       const safeEmail = getSafeEmail(user.email);
       const pumpStatusRef = ref(db, `users/${safeEmail}/controls/pumpStatus`);
@@ -57,13 +51,13 @@ const Home = () => {
       console.error("Eroare la pornirea pompei:", error);
     }
   };
-
+  
   const handlePumpStop = async () => {
     if (!user?.email) {
       console.error("Nu există utilizator autentificat");
       return;
     }
-
+  
     try {
       const safeEmail = getSafeEmail(user.email);
       const pumpStatusRef = ref(db, `users/${safeEmail}/controls/pumpStatus`);
@@ -73,6 +67,7 @@ const Home = () => {
       console.error("Eroare la oprirea pompei:", error);
     }
   };
+  
 
   const [schedule, setSchedule] = useState(
     Array(7)
@@ -138,11 +133,11 @@ const Home = () => {
   useEffect(() => {
     const unsubscribeAuth = auth.onAuthStateChanged((user) => {
       setUser(user);
-
+      
       if (user?.email) {
         const safeEmail = getSafeEmail(user.email);
         const userRef = ref(db, `users/${safeEmail}`);
-
+  
         const unsubscribeRealtime = onValue(userRef, (snapshot) => {
           const data = snapshot.val();
           if (data) {
@@ -153,35 +148,25 @@ const Home = () => {
             if (data.temperature !== undefined) {
               setTemperature(data.temperature);
             }
-
+            
             // Actualizează controalele
             if (data.controls) {
               setPumpMode(data.controls.pumpMode || "manual");
               setPumpStatus(data.controls.pumpStatus || "off");
               setAutoThreshold(data.controls.pragUmiditate || 30);
             }
-
+  
             // Actualizează programul
             if (data.program) {
-              const days = [
-                "Luni",
-                "Marti",
-                "Miercuri",
-                "Joi",
-                "Vineri",
-                "Sambata",
-                "Duminica",
-              ];
-              const newSchedule = Array(7)
-                .fill()
-                .map(() => ({ timeSlots: [] }));
-
+              const days = ["Luni", "Marti", "Miercuri", "Joi", "Vineri", "Sambata", "Duminica"];
+              const newSchedule = Array(7).fill().map(() => ({ timeSlots: [] }));
+              
               days.forEach((day, index) => {
                 if (data.program[day]) {
                   newSchedule[index].timeSlots = data.program[day]
-                    .filter((time) => time.includes("-"))
-                    .map((time) => {
-                      const [startTime, endTime] = time.split("-");
+                    .filter(time => time.includes('-'))
+                    .map(time => {
+                      const [startTime, endTime] = time.split('-');
                       return { startTime, endTime };
                     });
                 }
@@ -190,117 +175,96 @@ const Home = () => {
             }
           }
         });
-
+  
         return () => unsubscribeRealtime();
       }
     });
-
+  
     return () => unsubscribeAuth();
   }, []);
 
-  // Înlocuiește useEffect-ul existent pentru încărcarea datelor cu:
-  useEffect(() => {
-    if (!user?.email) return;
+// Înlocuiește useEffect-ul existent pentru încărcarea datelor cu:
+useEffect(() => {
+  if (!user?.email) return;
 
-    const safeEmail = getSafeEmail(user.email);
+  const safeEmail = getSafeEmail(user.email);
+  
+  // 1. Ascultă pentru modificări în Realtime Database
+  const unsubscribeRealtime = setupRealtimeListener(user.email, (data) => {
+    if (data.soilHumidity !== undefined) {
+      setMoisture(data.soilHumidity);
+    }
+    if (data.temperature !== undefined) {
+      setTemperature(data.temperature);
+    }
+    
+    
+    if (data.controls) {
+      setPumpMode(data.controls.pumpMode || "manual");
+      setPumpStatus(data.controls.pumpStatus || "off");
+      setAutoThreshold(data.controls.pragUmiditate || 30);
+    }
 
-    // 1. Ascultă pentru modificări în Realtime Database
-    const unsubscribeRealtime = setupRealtimeListener(user.email, (data) => {
-      if (data.soilHumidity !== undefined) {
-        setMoisture(data.soilHumidity);
-      }
-      if (data.temperature !== undefined) {
-        setTemperature(data.temperature);
-      }
+    if (data.program) {
+      const newSchedule = Array(7).fill().map(() => ({ timeSlots: [] }));
+      Object.keys(data.program).forEach(day => {
+        const dayIndex = ["Luni", "Marti", "Miercuri", "Joi", "Vineri", "Sambata", "Duminica"].indexOf(day);
+        if (dayIndex >= 0) {
+          newSchedule[dayIndex].timeSlots = data.program[day]
+            .filter(time => time.includes('-'))
+            .map(time => {
+              const [startTime, endTime] = time.split('-');
+              return { startTime, endTime };
+            });
+        }
+      });
+      setSchedule(newSchedule);
+    }
+  });
 
-      if (data.controls) {
-        setPumpMode(data.controls.pumpMode || "manual");
-        setPumpStatus(data.controls.pumpStatus || "off");
-        setAutoThreshold(data.controls.pragUmiditate || 30);
-      }
+  return () => {
+    unsubscribeRealtime();
+  };
+}, [user]);
 
-      if (data.program) {
-        const newSchedule = Array(7)
-          .fill()
-          .map(() => ({ timeSlots: [] }));
-        Object.keys(data.program).forEach((day) => {
-          const dayIndex = [
-            "Luni",
-            "Marti",
-            "Miercuri",
-            "Joi",
-            "Vineri",
-            "Sambata",
-            "Duminica",
-          ].indexOf(day);
-          if (dayIndex >= 0) {
-            newSchedule[dayIndex].timeSlots = data.program[day]
-              .filter((time) => time.includes("-"))
-              .map((time) => {
-                const [startTime, endTime] = time.split("-");
-                return { startTime, endTime };
-              });
-          }
-        });
-        setSchedule(newSchedule);
-      }
-    });
-
-    return () => {
-      unsubscribeRealtime();
-    };
-  }, [user]);
 
   // Save all changes to Firestore
   const saveSettings = async () => {
     if (!user?.email) return;
-
+  
     try {
       const safeEmail = getSafeEmail(user.email);
       const userRef = ref(db, `users/${safeEmail}`);
-
+  
       await update(userRef, {
         controls: {
           pumpMode,
           pumpStatus,
-          pragUmiditate: autoThreshold,
+          pragUmiditate: autoThreshold
         },
         program: {
-          Luni: schedule[0].timeSlots
-            .filter((slot) => slot.startTime)
-            .map((slot) => `${slot.startTime}-${slot.endTime}`),
-          Marti: schedule[1].timeSlots
-            .filter((slot) => slot.startTime)
-            .map((slot) => `${slot.startTime}-${slot.endTime}`),
-          Miercuri: schedule[2].timeSlots
-            .filter((slot) => slot.startTime)
-            .map((slot) => `${slot.startTime}-${slot.endTime}`),
-          Joi: schedule[3].timeSlots
-            .filter((slot) => slot.startTime)
-            .map((slot) => `${slot.startTime}-${slot.endTime}`),
-          Vineri: schedule[4].timeSlots
-            .filter((slot) => slot.startTime)
-            .map((slot) => `${slot.startTime}-${slot.endTime}`),
-          Sambata: schedule[5].timeSlots
-            .filter((slot) => slot.startTime)
-            .map((slot) => `${slot.startTime}-${slot.endTime}`),
-          Duminica: schedule[6].timeSlots
-            .filter((slot) => slot.startTime)
-            .map((slot) => `${slot.startTime}-${slot.endTime}`),
+          Luni: schedule[0].timeSlots.filter(slot => slot.startTime).map(slot => `${slot.startTime}-${slot.endTime}`),
+          Marti: schedule[1].timeSlots.filter(slot => slot.startTime).map(slot => `${slot.startTime}-${slot.endTime}`),
+          Miercuri: schedule[2].timeSlots.filter(slot => slot.startTime).map(slot => `${slot.startTime}-${slot.endTime}`),
+          Joi: schedule[3].timeSlots.filter(slot => slot.startTime).map(slot => `${slot.startTime}-${slot.endTime}`),
+          Vineri: schedule[4].timeSlots.filter(slot => slot.startTime).map(slot => `${slot.startTime}-${slot.endTime}`),
+          Sambata: schedule[5].timeSlots.filter(slot => slot.startTime).map(slot => `${slot.startTime}-${slot.endTime}`),
+          Duminica: schedule[6].timeSlots.filter(slot => slot.startTime).map(slot => `${slot.startTime}-${slot.endTime}`)
         },
-        lastUpdated: Date.now(),
+        lastUpdated: Date.now()
       });
-
+  
       // Actualizează stările salvate
       setSavedPumpMode(pumpMode);
       setSavedAutoThreshold(autoThreshold);
       setSavedSchedule(schedule);
-
+      
       console.log("Setări salvate cu succes!");
     } catch (error) {
       console.error("Eroare la salvarea setărilor:", error);
     }
   };
+
 
   // Handle pump mode change
   const handlePumpModeChange = (newMode) => {
@@ -328,6 +292,7 @@ const Home = () => {
     newSchedule[dayIndex].timeSlots.splice(slotIndex, 1); // Șterge intervalul
     setSchedule(newSchedule); // Actualizează starea cu noul program
   };
+ 
 
   const handleTimeChange = (dayIndex, slotIndex, field, value) => {
     if (/^([0-1]?[0-9]|2[0-3]):?([0-5][0-9])?$/.test(value) || value === "") {
@@ -337,41 +302,23 @@ const Home = () => {
     }
   };
 
-  // fetch umiditate si stare pompa
+  // fetch umiditate
   useEffect(() => {
     if (!user || !user.email) return;
-  
+
     const safeEmail = getSafeEmail(user.email);
-  
-    // Subscribe to soilHumidity
     const moistureRef = ref(realtimeDb, `users/${safeEmail}/soilHumidity`);
-    const moistureUnsubscribe = onValue(moistureRef, (snapshot) => {
+
+    const unsubscribe = onValue(moistureRef, (snapshot) => {
       const moistureValue = snapshot.val();
       if (moistureValue !== null) {
         setMoisture(moistureValue);
         console.log("Umiditate actualizată:", moistureValue);
       }
     });
-  
-    // Subscribe to pumpStatus
-    const pumpStatusRef = ref(realtimeDb, `users/${safeEmail}/controls/pumpStatus`);
-    const pumpStatusUnsubscribe = onValue(pumpStatusRef, (snapshot) => {
-      const pumpStatusValue = snapshot.val();
-      if (pumpStatusValue !== null) {
-        setPumpData({ pumpStatus: pumpStatusValue });  
-        setPumpStatus(pumpStatusValue);
-        console.log("Statusul pompei actualizat din baza de date:", pumpStatusValue);
-      }
-    });
-  
-    // Cleanup function to unsubscribe when the component unmounts or user changes
-    return () => {
-      moistureUnsubscribe();
-      pumpStatusUnsubscribe();
-    };
+
+    return () => unsubscribe(); // Cleanup la unmount
   }, [user]);
-  
- 
 
   const email = user?.email || ""; // Folosim operatorul de coalescență pentru a evita erorile dacă user sau email sunt null/undefined
   const username = email.split("@")[0]; // Împarte email-ul la '@' și ia prima parte
@@ -434,26 +381,21 @@ const Home = () => {
               : "--"}
           </Text>
         </View>
+        
       </View>
-      <TouchableOpacity onPress={handleRefresh} style={styles.refreshButton}>
-        <Text style={styles.refreshText}>
-          <Feather name="refresh-ccw" size={24} color="black" />
-        </Text>
-      </TouchableOpacity>
+      <TouchableOpacity
+            onPress={handleRefresh}
+            style={styles.refreshButton}
+          >
+            <Text style={styles.refreshText}>
+              <Feather name="refresh-ccw" size={24} color="black" />
+            </Text>
+          </TouchableOpacity> 
 
       {/* Pump Control Section */}
       <View style={styles.pumpContainer}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Control pompă de apă</Text>
-          <View style={[
-          styles.pumpStatusIndicator,
-          pumpData?.pumpStatus === "on" ? styles.pumpOn : styles.pumpOff
-        ]}>
-          <Text style={styles.pumpStatusText}>
-            {pumpData?.pumpStatus === "on" ? "ACTIVĂ" : "INACTIVĂ"}
-          </Text>
-        </View>
-        </View>
+        <Text style={styles.sectionTitle}>Control pompă de apă</Text>
+
         {/* Selector mod de funcționare */}
         <View style={styles.modeSelector}>
           <TouchableOpacity
@@ -526,8 +468,19 @@ const Home = () => {
         {/* Conținut în funcție de modul selectat */}
         {pumpMode === "manual" && (
           <View style={styles.pumpStatusContainer}>
+            <View
+              style={[
+                styles.pumpStatusIndicator,
+                pumpStatus === "on" ? styles.pumpOn : styles.pumpOff,
+              ]}
+            >
+              <Text style={styles.pumpStatusText}>
+                {pumpStatus === "on" ? "ACTIVE" : "INACTIVE"}
+              </Text>
+            </View>
+
             <View style={styles.pumpButtons}>
-              <TouchableOpacity
+            <TouchableOpacity
                 style={[styles.pumpButton, styles.pumpOnButton]}
                 onPress={handlePumpStart}
               >
@@ -891,36 +844,30 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 3,
   },
-  sectionHeader: {
-    // 👈 Noul container pentru titlu + status
-    flexDirection: "row",
-    alignItems: "center", // Aliniază pe verticală
-    justifyContent: "space-between", // Spațiere între ele
-    marginBottom: 15,
-  },
   sectionTitle: {
     fontFamily: "poppins-bold",
     fontSize: 18,
     color: "#333",
+    marginBottom: 15,
+  },
+  pumpStatusContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
   pumpStatusIndicator: {
-    paddingVertical: 5,
-    paddingHorizontal: 12,
-    borderRadius: 15,
+    paddingVertical: 8,
+    paddingHorizontal: 15,
+    borderRadius: 20,
+    justifyContent: "center",
+    alignItems: "center",
   },
   pumpOn: {
-    backgroundColor: Colors.LIGHT_GREEN, // Sau "#4CAF50"
+    backgroundColor: "rgba(46, 204, 113, 0.2)",
   },
   pumpOff: {
-    backgroundColor: Colors.RED, // Sau "#F44336"
+    backgroundColor: "rgba(231, 76, 60, 0.2)",
   },
-  pumpStatusText: {
-    fontFamily: "poppins-bold",
-    fontSize: 12,
-    color: "#fff",
-    textTransform: "uppercase",
-  },
-
   pumpStatusText: {
     fontFamily: "poppins-bold",
     fontSize: 14,
