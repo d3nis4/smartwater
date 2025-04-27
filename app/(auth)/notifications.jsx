@@ -3,6 +3,8 @@ import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native
 import { Ionicons } from '@expo/vector-icons';
 import { getFirestore, doc, onSnapshot } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';  // Importă pentru a accesa auth
+import { collection, query, where, getDocs } from "firebase/firestore";
+
 
 const Notifications = () => {
   const auth = getAuth();  // Obține instanța de autentificare
@@ -14,7 +16,8 @@ const Notifications = () => {
     lastWatering: 'N/A',
     lastUpdated: 'N/A'
   });
-
+// Adaugă acest state suplimentar
+const [wateringHistory, setWateringHistory] = useState([]);
   useEffect(() => {
     if (!user) return;  // Dacă nu există un utilizator, oprește execuția
 
@@ -52,6 +55,76 @@ const Notifications = () => {
     return () => unsubscribe();
   }, [user]);
 
+
+  // Efect separat pentru istoricul irigațiilor
+useEffect(() => {
+  if (!user?.email) return;
+
+  const fetchWateringHistory = async () => {
+    const db = getFirestore();
+    const q = query(
+      collection(db, "wateringHistory"),
+      where("userEmail", "==", user.email),
+      where("timestamp", ">", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)) // Ultimele 7 zile
+    );
+
+    const querySnapshot = await getDocs(q);
+    const history = [];
+    
+    querySnapshot.forEach((doc) => {
+      history.push({
+        id: doc.id,
+        startTime: doc.data().startTime?.toDate().toLocaleString(),
+        endTime: doc.data().endTime?.toDate().toLocaleString(),
+        duration: doc.data().duration,
+        moisture: doc.data().moisture
+      });
+    });
+
+    // Sortează după cea mai recentă irigare
+    setWateringHistory(history.sort((a, b) => new Date(b.startTime) - new Date(a.startTime)));
+  };
+
+  fetchWateringHistory();
+}, [user]);
+
+// Componentă pentru afișarea istoricului
+const renderWateringHistory = () => (
+  <View style={styles.historyContainer}>
+    <Text style={styles.sectionTitle}>Istoric Irigări (ultima săptămână)</Text>
+    
+    {wateringHistory.length > 0 ? (
+      <FlatList
+        data={wateringHistory}
+        keyExtractor={item => item.id}
+        renderItem={({ item }) => (
+          <View style={styles.historyItem}>
+            <View style={styles.historyHeader}>
+              <Ionicons name="water" size={18} color="#3498db" />
+              <Text style={styles.historyDate}>{item.startTime}</Text>
+            </View>
+            
+            <View style={styles.historyDetails}>
+              <Text>Durată: <Text style={styles.boldText}>{item.duration} minute</Text></Text>
+              <Text>Umiditate inițială: <Text style={styles.boldText}>{item.moisture}%</Text></Text>
+            </View>
+            
+            <View style={styles.historyFooter}>
+              <Text style={styles.historyTime}>
+                {item.startTime.split(',')[1]} - {item.endTime.split(',')[1]}
+              </Text>
+            </View>
+          </View>
+        )}
+      />
+    ) : (
+      <View style={styles.emptyState}>
+        <Ionicons name="time-outline" size={40} color="#95a5a6" />
+        <Text style={styles.emptyText}>Nu există irigări în ultima săptămână</Text>
+      </View>
+    )}
+  </View>
+);
   const renderNotification = ({ item }) => (
     <TouchableOpacity style={styles.notificationCard}>
       <View style={styles.notificationIcon}>

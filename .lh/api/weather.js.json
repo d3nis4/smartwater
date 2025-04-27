@@ -1,0 +1,22 @@
+{
+    "sourceFile": "api/weather.js",
+    "activeCommit": 0,
+    "commits": [
+        {
+            "activePatchIndex": 1,
+            "patches": [
+                {
+                    "date": 1745760995554,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n"
+                },
+                {
+                    "date": 1745761207616,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -1,6 +1,6 @@\n import axios from 'axios';\r\n-import { apiKey, apiForecast } from '../app/components/constants';\r\n+  import { apiKey, apiForecast } from '../constants';\r\n \r\n const forecastEndpoint = (params) => `http://api.weatherapi.com/v1/forecast.json?key=${apiKey}&q=${params.cityName}&days=5&aqi=yes&alerts=yes&lang=ro`;\r\n const locationsEndpoint = (params) => `http://api.weatherapi.com/v1/search.json?key=${apiKey}&q=${params.cityName}&hours=24&lang=ro`;\r\n \r\n"
+                }
+            ],
+            "date": 1745760995554,
+            "name": "Commit-0",
+            "content": "import axios from 'axios';\r\nimport { apiKey, apiForecast } from '../app/components/constants';\r\n\r\nconst forecastEndpoint = (params) => `http://api.weatherapi.com/v1/forecast.json?key=${apiKey}&q=${params.cityName}&days=5&aqi=yes&alerts=yes&lang=ro`;\r\nconst locationsEndpoint = (params) => `http://api.weatherapi.com/v1/search.json?key=${apiKey}&q=${params.cityName}&hours=24&lang=ro`;\r\n\r\nconst extendedForecastEndpoint = (params) => \r\n    `https://api.openweathermap.org/data/2.5/forecast/daily?lat=${params.lat}&lon=${params.lon}&cnt=15&units=metric&appid=${apiForecast}`;\r\n\r\nconst apiCall = async (endpoint) => {\r\n  try {\r\n    const response = await axios.get(endpoint);\r\n    console.log(\"API response:\", response.data);\r\n    return response.data;\r\n  } catch (err) {\r\n    console.error('API call failed:', err.message);\r\n    throw new Error('Failed to fetch data from WeatherAPI.');\r\n  }\r\n};\r\n\r\nexport const fetchWeatherForecast = (params) => apiCall(forecastEndpoint(params));\r\nexport const fetchLocations = (params) => apiCall(locationsEndpoint(params));\r\n\r\nexport const fetchExtendedForecast = (params) => apiCall(extendedForecastEndpoint(params));"
+        }
+    ]
+}

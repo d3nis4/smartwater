@@ -1,0 +1,18 @@
+{
+    "sourceFile": "constants/index.js",
+    "activeCommit": 0,
+    "commits": [
+        {
+            "activePatchIndex": 0,
+            "patches": [
+                {
+                    "date": 1745762602854,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n"
+                }
+            ],
+            "date": 1745762602854,
+            "name": "Commit-0",
+            "content": "export const apiKey = 'd7a2b68d9b114c62aa9134640243110';\r\n\r\nexport const apiForecast = '7b28b07e6aae2c807bb42845043ba4ce'\r\n\r\nexport const BASE_URL = 'https://tile.openweathermap.org/map';\r\n\r\nexport const weatherImages = {\r\n    'Partly cloudy': require('../assets/images/partlycloudy.png'), \r\n    'Ploi moderate': require('../assets/images/moderaterain.png'), \r\n    'Patchy rain possible': require('../assets/images/moderaterain.png'), \r\n    'Ploi pe porţiuni în apropiere': require('../assets/images/moderaterain.png'), \r\n    'Sunny': require('../assets/images/sun.png'),\r\n    'Cloudy': require('../assets/images/cloud.png'),\r\n    'Clear': require('../assets/images/sun.png'),\r\n    'Cer acoperit': require('../assets/images/cloud.png'),\r\n    'Ploi uşoare': require('../assets/images/moderaterain.png'),\r\n    'Moderate rain at times': require('../assets/images/moderaterain.png'),\r\n    'Heavy rain': require('../assets/images/heavyrain.png'),\r\n    'Heavy rain at times': require('../assets/images/heavyrain.png'),\r\n    'Moderate or heavy freezing rain': require('../assets/images/heavyrain.png'),\r\n    'Moderate or heavy rain shower': require('../assets/images/heavyrain.png'),\r\n    'Moderate or heavy rain with thunder': require('../assets/images/heavyrain.png'),\r\n    \r\n    'other': require('../assets/images/moderaterain.png')\r\n}"
+        }
+    ]
+}

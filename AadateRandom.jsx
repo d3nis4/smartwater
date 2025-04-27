@@ -8,6 +8,34 @@ import { auth } from '../../functions/FirebaseConfig';
 import { Colors } from '../../constants/Colors';
 import { Link } from 'expo-router';
 
+const initializeUserData = async () => {
+  if (!user?.email) return;
+
+  const safeEmail = getSafeEmail(user.email);
+  const userRef = ref(db, `users/${safeEmail}`);
+
+  try {
+    await update(userRef, {
+      controls: {
+        pumpMode: "manual",
+        pumpStatus: "off",
+        pragUmiditate: 30
+      },
+      program: {
+        Luni: [],
+        Marti: [],
+        Miercuri: [],
+        Joi: [],
+        Vineri: [],
+        Sambata: [],
+        Duminica: []
+      },
+      lastUpdated: Date.now()
+    });
+  } catch (error) {
+    console.error("Eroare la inițializarea datelor:", error);
+  }
+};
 
 
 export default function Login() {

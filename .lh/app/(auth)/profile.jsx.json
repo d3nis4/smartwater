@@ -1,0 +1,22 @@
+{
+    "sourceFile": "app/(auth)/profile.jsx",
+    "activeCommit": 0,
+    "commits": [
+        {
+            "activePatchIndex": 1,
+            "patches": [
+                {
+                    "date": 1745762207437,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n"
+                },
+                {
+                    "date": 1745762315588,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -1,9 +1,9 @@\n import { View, Text, Image, TouchableOpacity, ActivityIndicator } from 'react-native';\r\n import React, { useEffect, useState } from 'react';\r\n import Ionicons from '@expo/vector-icons/Ionicons';\r\n import { useRouter } from 'expo-router';\r\n-import Colors\r\n+import { Colors } from '../constants/Colors';\r\n import { useAuth } from '../../functions/index';\r\n \r\n export default function Profile() {\r\n   const router = useRouter();\r\n"
+                }
+            ],
+            "date": 1745762207437,
+            "name": "Commit-0",
+            "content": "import { View, Text, Image, TouchableOpacity, ActivityIndicator } from 'react-native';\r\nimport React, { useEffect, useState } from 'react';\r\nimport Ionicons from '@expo/vector-icons/Ionicons';\r\nimport { useRouter } from 'expo-router';\r\nimport Colors\r\nimport { useAuth } from '../../functions/index';\r\n\r\nexport default function Profile() {\r\n  const router = useRouter();\r\n  const { currentUser, signOut } = useAuth();\r\n\r\n  const [photoUrl, setPhotoUrl] = useState('https://ui-avatars.com/api/?name=User');\r\n  const [email, setEmail] = useState('');\r\n  const [name, setName] = useState('Utilizator');\r\n  const [loading, setLoading] = useState(true);\r\n\r\n  useEffect(() => {\r\n    if (currentUser) {\r\n      console.log(\"Utilizator conectat:\", currentUser);\r\n      setPhotoUrl(currentUser.photoURL || `https://ui-avatars.com/api/?name=${currentUser.email?.split('@')[0] || 'User'}`);\r\n      setEmail(currentUser.email || '');\r\n      setName(currentUser.displayName || currentUser.email?.split('@')[0] || 'Utilizator');\r\n    }\r\n    setLoading(false);\r\n  }, [currentUser]);\r\n\r\n  const onSignOutPress = async () => {\r\n    try {\r\n      await signOut();\r\n      router.replace('/login');\r\n    } catch (error) {\r\n      console.error(\"Eroare la deconectare:\", error);\r\n    }\r\n  };\r\n\r\n  if (loading) {\r\n    return (\r\n      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>\r\n        <ActivityIndicator size=\"large\" color={Colors.GREEN} />\r\n      </View>\r\n    );\r\n  }\r\n\r\n  const username = email ? email.split('@')[0] : 'Utilizator';\r\n\r\n  return (\r\n    <View style={{\r\n      padding: 20,\r\n      marginTop: 20,\r\n      backgroundColor: Colors.PRIMARY,\r\n      flex: 1\r\n    }}>\r\n      <View style={{\r\n        display: 'flex',\r\n        alignItems: 'center',\r\n        marginVertical: 25,\r\n      }}>\r\n        <Image\r\n          source={{ uri: photoUrl }}\r\n          style={{ width: 85, height: 85, borderRadius: 99 }}\r\n        />\r\n        <Text style={{\r\n          fontFamily: 'poppins-bold',\r\n          fontSize: 20,\r\n          marginTop: 30\r\n        }}>\r\n          {name}\r\n        </Text>\r\n        {email ? (\r\n          <Text style={{\r\n            fontFamily: 'poppins',\r\n            fontSize: 16,\r\n            color: \"#333333\",\r\n          }}>\r\n            Email: {email}\r\n          </Text>\r\n        ) : null}\r\n      </View>\r\n\r\n      <View style={{\r\n        marginTop: 50,\r\n        display: 'flex',\r\n        flexDirection: 'row',\r\n        justifyContent: 'center',\r\n        alignItems: 'center',\r\n      }}>\r\n        <TouchableOpacity style={styles.button} onPress={onSignOutPress}>\r\n          <Ionicons name=\"exit\" size={24} color={Colors.PRIMARY} style={{ marginRight: 10 }} />\r\n          <Text style={styles.buttonText}>Deconectează-te</Text>\r\n        </TouchableOpacity>\r\n      </View>\r\n    </View>\r\n  );\r\n}\r\n\r\nconst styles = {\r\n  button: {\r\n    backgroundColor: Colors.GREEN,\r\n    paddingVertical: 15,\r\n    paddingHorizontal: 30,\r\n    borderRadius: 25,\r\n    width: '95%',\r\n    alignItems: 'center',\r\n    justifyContent: 'center',\r\n    flexDirection: 'row',\r\n  },\r\n  buttonText: {\r\n    color: Colors.PRIMARY,\r\n    fontSize: 18,\r\n    fontFamily: 'Poppins',\r\n  },\r\n};"
+        }
+    ]
+}

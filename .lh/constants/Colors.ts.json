@@ -1,0 +1,22 @@
+{
+    "sourceFile": "constants/Colors.ts",
+    "activeCommit": 0,
+    "commits": [
+        {
+            "activePatchIndex": 1,
+            "patches": [
+                {
+                    "date": 1745762680730,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n"
+                },
+                {
+                    "date": 1745762693937,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -1,9 +1,6 @@\n-/**\r\n- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.\r\n- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.\r\n- */\r\n \r\n+\r\n const tintColorLight = '#0a7ea4';\r\n const tintColorDark = '#fff';\r\n \r\n export const Colors = {\r\n"
+                }
+            ],
+            "date": 1745762680730,
+            "name": "Commit-0",
+            "content": "/**\r\n * Below are the colors that are used in the app. The colors are defined in the light and dark mode.\r\n * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.\r\n */\r\n\r\nconst tintColorLight = '#0a7ea4';\r\nconst tintColorDark = '#fff';\r\n\r\nexport const Colors = {\r\n  WHITE: '#eff3ef',\r\n  PRIMARY: '#dfe8df',\r\n  GRAY: '#6c757d',\r\n  GREEN:'#608a60',\r\n  DARKGREEN:\"#263726\",\r\n  light: {\r\n    text: '#11181C',\r\n    background: '#fff',\r\n    tint: tintColorLight,\r\n    icon: '#687076',\r\n    tabIconDefault: '#687076',\r\n    tabIconSelected: tintColorLight,\r\n  },\r\n  dark: {\r\n    text: '#ECEDEE',\r\n    background: '#151718',\r\n    tint: tintColorDark,\r\n    icon: '#9BA1A6',\r\n    tabIconDefault: '#9BA1A6',\r\n    tabIconSelected: tintColorDark,\r\n  },\r\n};"
+        }
+    ]
+}

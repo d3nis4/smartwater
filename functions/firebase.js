@@ -1,53 +1,67 @@
-import { getFirestore, doc, setDoc } from "firebase/firestore";
-import { useUser } from "@clerk/clerk-react"; // pentru a obține email-ul utilizatorului
+import { getDatabase, ref, update, onValue } from "firebase/database";
+import { getAuth } from "firebase/auth";
+import { realtimeDb } from "./FirebaseConfig"; // Cale corectată
 
-
-const email = "user@example.com";
-
-
-// Exemplu de date pentru a salva în Firestore
-const dateIrigare = {
-  ploaie: false,
-  pragUmiditate: 60,
-  pumpMode: "programat",
-  temperatura: 22,
-  umiditateSol: 45,
-  userEmail: "user@example.com",
-  ziileIrigare: {
-    Luni: ["08:00-10:00", "14:00-16:00", "18:00-20:00"],
-    Marti: ["09:00-11:00", "12:00-14:00", "15:00-17:00"],
-    Miercuri: [],
-    Joi: ["07:00-09:00", "10:00-12:00"],
-    Vineri: [],
-    Sambata: ["06:00-08:00"],
-    Duminica: []
-  }
-};
-
-
-const db = getFirestore();
-
-// Salvarea datelor în Firestore
-const saveDataInFirestore = async () => {
+// Funcția pentru a salva în Realtime Database
+export const saveToRealtimeDatabase = async (data) => {
   try {
-    const user = useUser(); // Presupunem că obținem obiectul user din Clerk
-    const userEmail = user?.primaryEmailAddress?.emailAddress;
-
-    if (userEmail) {
-      // Salvăm datele în documentul asociat emailului utilizatorului
-      await setDoc(doc(db, "users", userEmail), {
-        ...dateIrigare,
-        userEmail: userEmail
-      });
-
-      console.log("Datele au fost salvate cu succes!");
-    } else {
-      console.error("Email-ul utilizatorului nu a fost găsit.");
+    const auth = getAuth();
+    const user = auth.currentUser;
+    
+    if (!user || !user.email) {
+      console.error("Utilizatorul nu este autentificat sau nu are email");
+      return;
     }
+
+    const safeEmail = user.email.replace('.', '_');
+    const userRef = ref(realtimeDb, `users/${safeEmail}`);
+
+    // Structura completă a datelor
+    const updateData = {
+      controls: {
+        pumpMode: data.pumpMode,
+        pumpStatus: data.pumpStatus,
+        pragUmiditate: data.autoThreshold
+      },
+      program: {
+        Luni: data.schedule[0].timeSlots.filter(slot => slot.startTime).map(slot => `${slot.startTime}-${slot.endTime}`),
+        Marti: data.schedule[1].timeSlots.filter(slot => slot.startTime).map(slot => `${slot.startTime}-${slot.endTime}`),
+        Miercuri: data.schedule[2].timeSlots.filter(slot => slot.startTime).map(slot => `${slot.startTime}-${slot.endTime}`),
+        Joi: data.schedule[3].timeSlots.filter(slot => slot.startTime).map(slot => `${slot.startTime}-${slot.endTime}`),
+        Vineri: data.schedule[4].timeSlots.filter(slot => slot.startTime).map(slot => `${slot.startTime}-${slot.endTime}`),
+        Sambata: data.schedule[5].timeSlots.filter(slot => slot.startTime).map(slot => `${slot.startTime}-${slot.endTime}`),
+        Duminica: data.schedule[6].timeSlots.filter(slot => slot.startTime).map(slot => `${slot.startTime}-${slot.endTime}`)
+      },
+      lastUpdated: Date.now()
+    };
+
+    await update(userRef, updateData);
+    console.log("Date salvate cu succes în Realtime Database");
+    return true;
   } catch (error) {
-    console.error("Eroare la salvarea datelor:", error);
+    console.error("Eroare la salvare:", error);
+    throw error;
   }
 };
 
-// Apelarea funcției pentru a salva datele
-saveDataInFirestore();
+// Funcție optimizată pentru listener
+export const setupRealtimeListener = (email, callback) => {
+  try {
+    const safeEmail = email.replace('.', '_');
+    const userRef = ref(realtimeDb, `users/${safeEmail}`);
+
+    const unsubscribe = onValue(userRef, (snapshot) => {
+      try {
+        const data = snapshot.val();
+        callback(data);
+      } catch (parseError) {
+        console.error("Eroare la parsarea datelor:", parseError);
+      }
+    });
+
+    return unsubscribe;
+  } catch (error) {
+    console.error("Eroare la inițializarea listenerului:", error);
+    return () => {}; // Returnează o funcție goală pentru cleanup
+  }
+};

@@ -1,0 +1,22 @@
+{
+    "sourceFile": "app/index.jsx",
+    "activeCommit": 0,
+    "commits": [
+        {
+            "activePatchIndex": 1,
+            "patches": [
+                {
+                    "date": 1745760995554,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n"
+                },
+                {
+                    "date": 1745762315590,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -1,7 +1,7 @@\n import { View, Text, Image, StyleSheet, TouchableOpacity } from 'react-native'\r\n import React, { useEffect } from 'react'\r\n-import { Colors } from '@/app/components/constants/Colors'\r\n+import { Colors } from '@/app/constants/Colors'\r\n import { Redirect, useRouter } from 'expo-router'\r\n \r\n import { Link } from 'expo-router';\r\n \r\n"
+                }
+            ],
+            "date": 1745760995554,
+            "name": "Commit-0",
+            "content": "import { View, Text, Image, StyleSheet, TouchableOpacity } from 'react-native'\r\nimport React, { useEffect } from 'react'\r\nimport { Colors } from '@/app/components/constants/Colors'\r\nimport { Redirect, useRouter } from 'expo-router'\r\n\r\nimport { Link } from 'expo-router';\r\n\r\n\r\nexport default function Index() {\r\n\r\n  const router = useRouter();\r\n\r\n  return (\r\n    <View >\r\n      {\r\n        // user && <Redirect href={'/(tabs)/home'}/> \r\n      }\r\n      <Image source={require('./../assets/images/login.png')}\r\n        style={{\r\n          width: '100%',\r\n          height: 450,\r\n        }}\r\n      />\r\n      <View style={styles.container}>\r\n        <Text style={{\r\n          fontSize: 20,\r\n          fontFamily: 'poppins-bold',\r\n          textAlign: 'center',\r\n          marginTop: 10\r\n        }\r\n        }>\r\n          SmartWater\r\n        </Text>\r\n\r\n        <Text style={{\r\n          fontFamily: 'poppins',\r\n          fontSize: 17,\r\n          textAlign: 'center',\r\n          color: Colors.GRAY,\r\n          marginTop: 20\r\n        }}\r\n        >\r\n          Ești pregătit pentru o grădina inteligentă? Automatizează irigarea grădinii eonomisind timp și apă.\r\n        </Text>\r\n\r\n        <Link href=\"/(public)/login\" asChild>\r\n          <TouchableOpacity style={styles.button}>\r\n            <Text style={styles.buttonText}>Login</Text>\r\n          </TouchableOpacity>\r\n        </Link>\r\n\r\n      </View>\r\n    </View>\r\n  )\r\n}\r\n\r\nconst styles = StyleSheet.create({\r\n  container: {\r\n    backgroundColor: Colors.WHITE,\r\n    marginTop: -30,\r\n    borderTopLeftRadius: 30,\r\n    borderTopRightRadius: 30,\r\n    height: '100%',\r\n    padding: 25\r\n  },\r\n  button: {\r\n    padding: 15,\r\n    backgroundColor: Colors.GREEN,\r\n    borderRadius: 99,\r\n    marginTop: '15%'\r\n  },\r\n  buttonText: {\r\n    color: Colors.WHITE,\r\n    textAlign: 'center',\r\n    fontFamily: 'poppins',\r\n    fontSize: 17\r\n  }\r\n})\r\n"
+        }
+    ]
+}
