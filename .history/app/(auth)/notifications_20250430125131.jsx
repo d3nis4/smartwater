@@ -120,11 +120,11 @@ const Notifications = () => {
       return "O oră și un minut";
     }
     if (hours > 0 && minutes > 0) {
-      return `${hours} ${hours === 1 ? "oră" : "ore"} și ${minutes} ${minutes === 1 ? "minut" : minutes >= 20 ? `${minutes} de minute` : "minute"}`;
+      return `${hours} ${hours === 1 ? "oră" : "ore"} și ${minutes} ${minutes === 1 ? "minut" : "minute"}`;
     } else if (hours > 0) {
       return `${hours} ${hours === 1 ? "oră" : "ore"}`;
     } else if (minutes > 0) {
-      return `${minutes === 1 ? "un minut" : minutes >= 20 ? `de ${minutes} minute` : `${minutes} minute`}`;
+      return `${minutes === 1 ? "un minut" : `${minutes} minute`}`;
     } else {
       return "0 minute";
     }

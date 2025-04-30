@@ -1,5 +1,9 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, StyleSheet } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { getAuth } from "firebase/auth";
 import { getDatabase, ref, onValue } from "firebase/database";
@@ -56,6 +60,7 @@ const Notifications = () => {
         });
       }
     });
+
     const unsubscribeLogs = onValue(dailyLogsRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
@@ -75,17 +80,9 @@ const Notifications = () => {
           .sort((a, b) => new Date(b.date) - new Date(a.date)); // cele mai recente primele
     
         setWeeklyWateringLogs(filteredLogs);
-    
-        // 👉 Salvează ultima irigare dacă există
-        if (filteredLogs.length > 0) {
-          setLastWateringDate(filteredLogs[0].date);
-        } else {
-          setLastWateringDate("N/A");
-        }
       }
     });
     
-
     const unsubscribeEmail = onValue(emailRef, (snapshot) => {
       const data = snapshot.val();
       if (data?.soilHumidity) {
@@ -104,32 +101,25 @@ const Notifications = () => {
   const calculateDuration = (startTime, endTime) => {
     const [startHour, startMinute] = startTime.split(":").map(Number);
     const [endHour, endMinute] = endTime.split(":").map(Number);
-  
+
     const startTotalMinutes = startHour * 60 + startMinute;
     const endTotalMinutes = endHour * 60 + endMinute;
-  
+
     const durationMinutes = endTotalMinutes - startTotalMinutes;
-  
+
     if (durationMinutes < 0) {
-      return "Interval invalid";
+      return "Interval invalid"; // În cazul în care se întâmplă o eroare de calcul
     }
-  
+
     const hours = Math.floor(durationMinutes / 60);
     const minutes = durationMinutes % 60;
-    if (hours === 1 && minutes === 1) {
-      return "O oră și un minut";
-    }
-    if (hours > 0 && minutes > 0) {
-      return `${hours} ${hours === 1 ? "oră" : "ore"} și ${minutes} ${minutes === 1 ? "minut" : minutes >= 20 ? `${minutes} de minute` : "minute"}`;
-    } else if (hours > 0) {
-      return `${hours} ${hours === 1 ? "oră" : "ore"}`;
-    } else if (minutes > 0) {
-      return `${minutes === 1 ? "un minut" : minutes >= 20 ? `de ${minutes} minute` : `${minutes} minute`}`;
+
+    if (hours > 0) {
+      return `${hours} ore și ${minutes} minute`;
     } else {
-      return "0 minute";
+      return `${minutes} minute`;
     }
   };
-  
 
   return (
     <View style={styles.container}>
@@ -172,48 +162,48 @@ const Notifications = () => {
       </View>
 
       {/* Notifications List */}
+      <Text style={styles.sectionTitle}>Notificări Recente</Text>
+
       <Text style={styles.sectionTitle}>Irigări din ultima săptămână</Text>
 
-      {weeklyWateringLogs.length > 0 ? (
-        weeklyWateringLogs.map((log, index) => (
-          <View key={index} style={styles.lastActivation}>
-            <View style={styles.activationInfo}>
-              <Ionicons name="calendar" size={20} color="#f39c12" />
-              <Text style={styles.activationText}>
-                {formatDateReadable(log.date)}
-              </Text>
-            </View>
+{weeklyWateringLogs.length > 0 ? (
+  weeklyWateringLogs.map((log, index) => (
+    <View key={index} style={styles.lastActivation}>
+      <View style={styles.activationInfo}>
+        <Ionicons name="calendar" size={20} color="#f39c12" />
+        <Text style={styles.activationText}>
+          {formatDateReadable(log.date)}
+        </Text>
+      </View>
 
-            <View style={styles.activationInfo}>
-              <Ionicons name="time" size={20} color="#f39c12" />
-              <View style={{ marginLeft: 8 }}>
-                <Text style={styles.label}>Intervale de irigare:</Text>
-                {log.intervals.length > 0 ? (
-                  log.intervals.map((interval, i) => {
-                    const [start, end] = interval.split("-");
-                    const duration = calculateDuration(start, end);
-                    return (
-                      <Text key={i} style={styles.bullet}>
-                        • {interval} ({duration})
-                      </Text>
-                    );
-                  })
-                ) : (
-                  <Text style={styles.bullet}>Nicio irigare înregistrată</Text>
-                )}
-              </View>
-            </View>
-          </View>
-        ))
-      ) : (
-        <View style={styles.emptyState}>
-          <Ionicons name="notifications-off" size={40} color="#95a5a6" />
-          <Text style={styles.emptyText}>
-            Nicio irigare înregistrată recent
-          </Text>
+      <View style={styles.activationInfo}>
+        <Ionicons name="time" size={20} color="#f39c12" />
+        <View style={{ marginLeft: 8 }}>
+          <Text style={styles.label}>Intervale de irigare:</Text>
+          {log.intervals.length > 0 ? (
+            log.intervals.map((interval, i) => {
+              const [start, end] = interval.split("-");
+              const duration = calculateDuration(start, end);
+              return (
+                <Text key={i} style={styles.bullet}>
+                  • {interval} ({duration})
+                </Text>
+              );
+            })
+          ) : (
+            <Text style={styles.bullet}>Nicio irigare înregistrată</Text>
+          )}
         </View>
-      )}
+      </View>
     </View>
+  ))
+) : (
+  <View style={styles.emptyState}>
+    <Ionicons name="notifications-off" size={40} color="#95a5a6" />
+    <Text style={styles.emptyText}>Nicio irigare înregistrată recent</Text>
+  </View>
+)}
+
   );
 };
 

@@ -56,13 +56,14 @@ const Notifications = () => {
         });
       }
     });
+
     const unsubscribeLogs = onValue(dailyLogsRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
         const now = new Date();
         const oneWeekAgo = new Date(now);
         oneWeekAgo.setDate(now.getDate() - 7);
-    
+
         const filteredLogs = Object.entries(data)
           .filter(([dateStr, log]) => {
             const logDate = new Date(dateStr);
@@ -73,18 +74,10 @@ const Notifications = () => {
             intervals: log.intervals ? Object.values(log.intervals) : [],
           }))
           .sort((a, b) => new Date(b.date) - new Date(a.date)); // cele mai recente primele
-    
+
         setWeeklyWateringLogs(filteredLogs);
-    
-        // 👉 Salvează ultima irigare dacă există
-        if (filteredLogs.length > 0) {
-          setLastWateringDate(filteredLogs[0].date);
-        } else {
-          setLastWateringDate("N/A");
-        }
       }
     });
-    
 
     const unsubscribeEmail = onValue(emailRef, (snapshot) => {
       const data = snapshot.val();
@@ -104,32 +97,25 @@ const Notifications = () => {
   const calculateDuration = (startTime, endTime) => {
     const [startHour, startMinute] = startTime.split(":").map(Number);
     const [endHour, endMinute] = endTime.split(":").map(Number);
-  
+
     const startTotalMinutes = startHour * 60 + startMinute;
     const endTotalMinutes = endHour * 60 + endMinute;
-  
+
     const durationMinutes = endTotalMinutes - startTotalMinutes;
-  
+
     if (durationMinutes < 0) {
-      return "Interval invalid";
+      return "Interval invalid"; // În cazul în care se întâmplă o eroare de calcul
     }
-  
+
     const hours = Math.floor(durationMinutes / 60);
     const minutes = durationMinutes % 60;
-    if (hours === 1 && minutes === 1) {
-      return "O oră și un minut";
-    }
-    if (hours > 0 && minutes > 0) {
-      return `${hours} ${hours === 1 ? "oră" : "ore"} și ${minutes} ${minutes === 1 ? "minut" : minutes >= 20 ? `${minutes} de minute` : "minute"}`;
-    } else if (hours > 0) {
-      return `${hours} ${hours === 1 ? "oră" : "ore"}`;
-    } else if (minutes > 0) {
-      return `${minutes === 1 ? "un minut" : minutes >= 20 ? `de ${minutes} minute` : `${minutes} minute`}`;
+
+    if (hours > 0) {
+      return `${hours} ore și ${minutes} minute`;
     } else {
-      return "0 minute";
+      return `${minutes} minute`;
     }
   };
-  
 
   return (
     <View style={styles.container}>
