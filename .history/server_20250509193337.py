@@ -1,6 +1,6 @@
 import unittest
 from unittest.mock import patch
-from server import app  
+from app import app  # Asigură-te că fișierul tău se numește app.py sau schimbă importul corespunzător
 
 class PredictFromFirebaseTests(unittest.TestCase):
     def setUp(self):

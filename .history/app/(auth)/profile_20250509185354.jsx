@@ -158,7 +158,7 @@ export default function Profile() {
             </View>
 
             {/* Afișare locație salvată */}
-            <View style={{marginBottom:5 }}>
+            <View style={{ marginVertical: 20 }}>
               {savedLocation ? (
                 <Text style={{ fontFamily: 'poppins', fontSize: 16, color: "#333333" }}>
                   Locația salvată: {savedLocation.city}

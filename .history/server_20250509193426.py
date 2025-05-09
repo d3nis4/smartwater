@@ -1,6 +1,6 @@
 import unittest
 from unittest.mock import patch
-from server import app  
+from app import app  
 
 class PredictFromFirebaseTests(unittest.TestCase):
     def setUp(self):
