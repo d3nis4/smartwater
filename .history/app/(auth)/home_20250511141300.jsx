@@ -53,8 +53,8 @@ const Home = () => {
   const realtimeDb = getDatabase();
 
   // Helper function to sanitize email for Firebase paths
-const getSafeEmail = (email) =>
-  email ? email.toLowerCase().replace(/\./g, "_").replace(/@/g, "_") : "";
+  const getSafeEmail = (email) =>
+    email ? email.toLowerCase().replace(/\./g, "_").replace(/@/g, "_") : "";
 
   // Fetch prediction from Flask server
 const fetchSmartPrediction = async (safeEmail) => {

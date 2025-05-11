@@ -115,7 +115,7 @@ const Login = () => {
             </TouchableOpacity>
           </View>
           {/* Link to Reset Password */}
-        <View style={{ marginTop: 10 }}>
+        <View style={{ marginTop: 20 }}>
           <TouchableOpacity onPress={() => router.push('/reset')}>
             <Text style={styles.link}>Ai uitat parola?</Text>
           </TouchableOpacity>

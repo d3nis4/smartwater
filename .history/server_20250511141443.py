@@ -23,7 +23,7 @@ def predict_from_firebase():
         if not user_id:
             return jsonify({'error': 'user_id parameter is required'}), 400
         
-        response = requests.get(f"{FIREBASE_URL}/users/{user_id}.json")
+        response = requests.get(f"{FIREBASE_URL}/users/danciudenisa12_gmail_com.json")
         response.raise_for_status()
         data = response.json()
 

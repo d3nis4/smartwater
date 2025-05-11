@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import { getDatabase, onValue, update } from "firebase/database";
 import { Platform } from "react-native";
 import { Alert } from "react-native";
 import { Colors } from "../../constants/Colors";
@@ -25,17 +26,15 @@ import { Fontisto } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import Slider from "@react-native-community/slider";
-import { getAuth, onAuthStateChanged } from "firebase/auth";
-import { ref, get, set, getDatabase, onValue, update } from "firebase/database";
+import { getAuth } from "firebase/auth";
+import { ref, get, set } from "firebase/database";
 
 import { realtimeDb } from "../../functions/FirebaseConfig";
-
-const FLASK_SERVER_URL = 'http://10.0.2.2:5000';
-
 
 const Home = () => {
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState(null);
+  const [userId, setUserId] = useState(null);
   const [moisture, setMoisture] = useState(null);
   const [temperature, setTemperature] = useState(null);
   const [pumpStatus, setPumpStatus] = useState("off");
@@ -46,200 +45,6 @@ const Home = () => {
   const [scheduledDays, setScheduledDays] = useState([]);
   const [pumpData, setPumpData] = useState(null);
   const [overrideActive, setOverrideActive] = useState(false);
-
-  // Firebase instances
-  const auth = getAuth();
-  const db = getDatabase();
-  const realtimeDb = getDatabase();
-
-  // Helper function to sanitize email for Firebase paths
-const getSafeEmail = (email) =>
-  email ? email.toLowerCase().replace(/\./g, "_").replace(/@/g, "_") : "";
-
-  // Fetch prediction from Flask server
-const fetchSmartPrediction = async (safeEmail) => {
-  try {
-    console.log(`Fetching prediction for: ${safeEmail}`);
-    const response = await fetch(
-      `${FLASK_SERVER_URL}/predict_from_firebase?user_id=${safeEmail}`
-    );
-    
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    
-    const data = await response.json();
-    console.log("Prediction response:", data);
-
-    if (data.status === 'success' && data.data?.prediction !== undefined) {
-      await set(
-        ref(db, `users/${safeEmail}/controls/pumpStatus`),
-        data.data.prediction === 1 ? "on" : "off"
-      );
-      return data.data.prediction;
-    } else {
-      throw new Error('Invalid prediction data');
-    }
-  } catch (error) {
-    console.error("Prediction error:", error);
-    throw error;
-  }
-};
-  // Handle pump mode change
-  const handlePumpModeChange = async (newMode) => {
-    if (!user?.email) return;
-
-    try {
-      const safeEmail = getSafeEmail(user.email);
-
-      // Update local state
-      setPumpMode(newMode);
-
-      // Update in Firebase
-      await update(ref(db, `users/${safeEmail}/controls`), {
-        pumpMode: newMode,
-      });
-
-      // Reset pump state when switching to smart/auto mode
-      if (newMode !== "manual") {
-        await set(ref(db, `users/${safeEmail}/controls/pumpStatus`), "off");
-        await set(ref(db, `users/${safeEmail}/controls/override`), false);
-        setOverrideActive(false);
-      }
-
-      // If switching to smart mode, get immediate prediction
-      if (newMode === "smart") {
-        fetchSmartPrediction(safeEmail);
-      }
-    } catch (error) {
-      console.error("Mode change error:", error);
-      setPumpMode(pumpMode); // Revert on error
-    }
-  };
-
-  
-
-  // Main data listener
-  useEffect(() => {
-    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
-      setUser(user);
-      setLoading(false);
-
-      if (!user?.email) return;
-
-      const safeEmail = getSafeEmail(user.email);
-      const userRef = ref(db, `users/${safeEmail}`);
-
-      const unsubscribeRealtime = onValue(userRef, (snapshot) => {
-        const data = snapshot.val() || {};
-
-        // Update sensor data
-        setMoisture(data?.soilHumidity ?? null);
-        setTemperature(data?.temperature ?? null);
-
-        // Update control settings
-        if (data.controls) {
-          setPumpMode(data.controls.pumpMode || "manual");
-          setPumpStatus(data.controls.pumpStatus || "off");
-          setAutoThreshold(data.controls.pragUmiditate || 30);
-          setOverrideActive(data.controls.override || false);
-        }
-
-        // Update schedule
-        if (data.program) {
-          const days = [
-            "Luni",
-            "Marti",
-            "Miercuri",
-            "Joi",
-            "Vineri",
-            "Sambata",
-            "Duminica",
-          ];
-          const newSchedule = Array(7)
-            .fill()
-            .map(() => ({ timeSlots: [] }));
-
-          days.forEach((day, index) => {
-            if (data.program[day]) {
-              newSchedule[index].timeSlots = data.program[day]
-                .filter((time) => time.includes("-"))
-                .map((time) => {
-                  const [startTime, endTime] = time.split("-");
-                  return { startTime, endTime };
-                });
-            }
-          });
-          setSchedule(newSchedule);
-        }
-      });
-
-      return unsubscribeRealtime;
-    });
-
-    return unsubscribeAuth;
-  }, []);
-
-  // Smart mode effect
-  useEffect(() => {
-    if (!user?.email || pumpMode !== "smart" || overrideActive) return;
-
-    const safeEmail = getSafeEmail(user.email);
-    const moistureRef = ref(db, `users/${safeEmail}/soilHumidity`);
-    const tempRef = ref(db, `users/${safeEmail}/temperature`);
-
-    // Setup interval for periodic predictions (every 30 minutes)
-    const interval = setInterval(() => {
-      fetchSmartPrediction(safeEmail);
-    }, 30 * 60 * 1000);
-
-    // Listen for sensor changes
-    const moistureUnsub = onValue(moistureRef, () => {
-      fetchSmartPrediction(safeEmail);
-    });
-
-    const tempUnsub = onValue(tempRef, () => {
-      fetchSmartPrediction(safeEmail);
-    });
-
-    // Initial prediction
-    fetchSmartPrediction(safeEmail);
-
-    return () => {
-      clearInterval(interval);
-      moistureUnsub();
-      tempUnsub();
-    };
-  }, [user, pumpMode, overrideActive]);
-
-  // Pump status listener
-  useEffect(() => {
-    if (!user?.email) return;
-
-    const safeEmail = getSafeEmail(user.email);
-    const statusRef = ref(db, `users/${safeEmail}/controls/pumpStatus`);
-
-    const unsubscribe = onValue(statusRef, (snapshot) => {
-      const status = snapshot.val();
-      setPumpStatus(status || "off");
-    });
-
-    return unsubscribe;
-  }, [user]);
-
-  // Override status checker
-  useEffect(() => {
-    if (!user?.email) return;
-
-    const safeEmail = getSafeEmail(user.email);
-    const overrideRef = ref(db, `users/${safeEmail}/controls/override`);
-
-    const unsubscribe = onValue(overrideRef, (snapshot) => {
-      setOverrideActive(snapshot.val() || false);
-    });
-
-    return unsubscribe;
-  }, [user]);
 
   useEffect(() => {
     const checkOverrideStatus = async () => {
@@ -293,7 +98,6 @@ const fetchSmartPrediction = async (safeEmail) => {
       console.error("Eroare la pornirea manuală a pompei:", error);
     }
   };
-
   useEffect(() => {
     if (!user?.email) return;
 
@@ -411,6 +215,10 @@ const fetchSmartPrediction = async (safeEmail) => {
       .fill()
       .map(() => ({ timeSlots: [{ startTime: "", endTime: "" }] }))
   );
+  const auth = getAuth();
+  const db = getDatabase();
+  const getSafeEmail = (email) =>
+    email ? email.toLowerCase().replace(/\./g, "_").replace(/@/g, "_") : "";
 
   const getMoistureData = async () => {
     if (!user || !user.email) return;
@@ -458,52 +266,6 @@ const fetchSmartPrediction = async (safeEmail) => {
     getMoistureData();
     getTemperatureData(); // Apelează funcția pentru a actualiza umiditatea imediat
   };
-
-  //for smart mode
-  useEffect(() => {
-    if (!user?.email || pumpMode !== "smart" || overrideActive) return;
-
-    const db = getDatabase();
-    const safeEmail = getSafeEmail(user.email);
-
-    // Funcție pentru a obține și procesa predicția
-    const fetchAndApplyPrediction = async () => {
-      try {
-        const response = await fetch(
-          "http://<IP-FLASK-SERVER>:5000/predict_from_firebase"
-        );
-        const data = await response.json();
-
-        if (data.prediction !== undefined) {
-          await set(
-            ref(db, `users/${safeEmail}/controls/pumpStatus`),
-            data.prediction === 1 ? "on" : "off"
-          );
-        }
-      } catch (error) {
-        console.error("Eroare la predictie smart:", error);
-      }
-    };
-
-    // Rulează imediat la montare
-    fetchAndApplyPrediction();
-
-    // Setează interval pentru actualizare periodică (ex. la fiecare 30 min)
-    const interval = setInterval(fetchAndApplyPrediction, 30 * 60 * 1000);
-
-    // Ascultă modificări în senzori pentru a declanșa noi predicții
-    const moistureRef = ref(db, `users/${safeEmail}/soilHumidity`);
-    const tempRef = ref(db, `users/${safeEmail}/temperature`);
-
-    const moistureUnsub = onValue(moistureRef, fetchAndApplyPrediction);
-    const tempUnsub = onValue(tempRef, fetchAndApplyPrediction);
-
-    return () => {
-      clearInterval(interval);
-      moistureUnsub();
-      tempUnsub();
-    };
-  }, [user, pumpMode, overrideActive]);
 
   useEffect(() => {
     const unsubscribeAuth = auth.onAuthStateChanged((user) => {
@@ -619,6 +381,30 @@ const fetchSmartPrediction = async (safeEmail) => {
     }
   };
 
+  // Handle pump mode change
+  const handlePumpModeChange = async (newMode) => {
+    if (!user?.email) return;
+
+    try {
+      // 1. Actualizează starea locală
+      setPumpMode(newMode);
+
+      // 2. Actualizează în Firebase
+      const safeEmail = getSafeEmail(user.email);
+      await update(ref(db, `users/${safeEmail}/controls`), {
+        pumpMode: newMode,
+      });
+
+      // 3. Resetează starea pompei dacă trecem în modul automat/smart
+      if (newMode !== "manual") {
+        await set(ref(db, `users/${safeEmail}/controls/pumpStatus`), "off");
+      }
+    } catch (error) {
+      console.error("Eroare la schimbarea modului:", error);
+      // Revertim starea în caz de eroare
+      setPumpMode(pumpMode);
+    }
+  };
   const toggleDay = (dayIndex) => {
     setScheduledDays((prev) =>
       prev.includes(dayIndex)
@@ -687,28 +473,24 @@ const fetchSmartPrediction = async (safeEmail) => {
   const username = email.split("@")[0]; // Împarte email-ul la '@' și ia prima parte
 
 
+const fetchSmartPrediction = async () => {
+  if (!user?.email) return;
 
-  // // Handle manual pump controls
-  // const handlePumpControl = async (action) => {
-  //   if (!user?.email) return;
+  try {
+    const safeEmail = getSafeEmail(user.email);
+    const response = await fetch('http://http://127.0.0.1:5000/predict_from_firebase/predict_from_firebase');
+    const data = await response.json();
 
-  //   try {
-  //     const safeEmail = getSafeEmail(user.email);
-  //     const pumpStatusRef = ref(db, `users/${safeEmail}/controls/pumpStatus`);
+    if (data.prediction === 1) { // Dacă modelul recomandă activarea pompei
+      await set(ref(db, `users/${safeEmail}/controls/pumpStatus`), "on");
+    } else {
+      await set(ref(db, `users/${safeEmail}/controls/pumpStatus`), "off");
+    }
+  } catch (error) {
+    console.error("Eroare la obținerea predicției smart:", error);
+  }
+};
 
-  //     if (action === "start") {
-  //       await set(pumpStatusRef, "on");
-  //       await set(ref(db, `users/${safeEmail}/controls/override`), false);
-  //       setOverrideActive(false);
-  //     } else {
-  //       await set(pumpStatusRef, "off");
-  //       await set(ref(db, `users/${safeEmail}/controls/override`), true);
-  //       setOverrideActive(true);
-  //     }
-  //   } catch (error) {
-  //     console.error("Pump control error:", error);
-  //   }
-  // };
   return (
     <ScrollView style={styles.container}>
       {/* Header Section */}
@@ -793,7 +575,7 @@ const fetchSmartPrediction = async (safeEmail) => {
         </TouchableOpacity>
       )}
 
-      {savedPumpMode !== "manual" && pumpData?.pumpStatus === "on" && (
+      {savedPumpMode !== "manual"  && pumpData?.pumpStatus === "on" && (
         <TouchableOpacity
           onPress={handleOverrideStop}
           style={{
@@ -959,24 +741,15 @@ const fetchSmartPrediction = async (safeEmail) => {
           </View>
         )}
 
-       {pumpMode === "smart" && (
-        <View style={styles.autoModeContainer}>
-          <Text style={styles.autoModeText}>
-            Pompa va funcționa automat în funcție de parametrii de mediu:
-            prognoza meteo, temperatura, umiditate
-          </Text>
-          <View style={styles.thresholdControl}>
-            <Text style={styles.smartInfo}>
-              Stare curentă: {pumpStatus === "on" ? "Pornită" : "Oprită"}
+        {pumpMode === "smart" && (
+          <View style={styles.autoModeContainer}>
+            <Text style={styles.autoModeText}>
+              Pompa va funcționa automat in functie de parametrii de mediu:
+              prognoza meteo, temperatura, umiditate
             </Text>
-            {overrideActive && (
-              <Text style={styles.smartWarning}>
-                Override activ - controlul smart este suspendat
-              </Text>
-            )}
+            <View style={styles.thresholdControl}></View>
           </View>
-        </View>
-      )}
+        )}
 
         {pumpMode === "scheduled" && (
           <View style={styles.scheduleContainer}>

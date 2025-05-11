@@ -22,8 +22,7 @@ def predict_from_firebase():
         user_id = request.args.get('user_id')
         if not user_id:
             return jsonify({'error': 'user_id parameter is required'}), 400
-        
-        response = requests.get(f"{FIREBASE_URL}/users/{user_id}.json")
+        response = requests.get(f"{FIREBASE_URL}/users/danciudenisa12_gmail_com.json")
         response.raise_for_status()
         data = response.json()
 
@@ -50,55 +49,55 @@ def predict_from_firebase():
             "Sunny": "Sunny",
             "Clear": "Sunny",
             # Cloudy
-        "Partly cloudy": "Cloudy",
-        "Cloudy": "Cloudy",
-        "Overcast": "Cloudy",
-        "Mist": "Cloudy",
-        "Fog": "Cloudy",
-        "Freezing fog": "Cloudy",
-        "Blowing snow": "Cloudy",
-        "Patchy snow possible": "Cloudy",
-        "Patchy sleet possible": "Cloudy",
-        "Patchy freezing drizzle possible": "Cloudy",
-        "Patchy light drizzle": "Cloudy",
-        "Light drizzle": "Cloudy",
-        "Freezing drizzle": "Cloudy",
-        "Heavy freezing drizzle": "Cloudy",
-        "Patchy light snow": "Cloudy",
-        "Light snow": "Cloudy",
-        "Patchy moderate snow": "Cloudy",
-        "Moderate snow": "Cloudy",
-        "Patchy heavy snow": "Cloudy",
-        "Heavy snow": "Cloudy",
-        "Light sleet": "Cloudy",
-        "Moderate or heavy sleet": "Cloudy",
-        "Ice pellets": "Cloudy",
-        "Light showers of ice pellets": "Cloudy",
-        "Moderate or heavy showers of ice pellets": "Cloudy",
-        "Light snow showers": "Cloudy",
-        "Moderate or heavy snow showers": "Cloudy",
-        "Light sleet showers": "Cloudy",
-        "Moderate or heavy sleet showers": "Cloudy",
-        "Blizzard": "Cloudy",
+    "Partly cloudy": "Cloudy",
+    "Cloudy": "Cloudy",
+    "Overcast": "Cloudy",
+    "Mist": "Cloudy",
+    "Fog": "Cloudy",
+    "Freezing fog": "Cloudy",
+    "Blowing snow": "Cloudy",
+    "Patchy snow possible": "Cloudy",
+    "Patchy sleet possible": "Cloudy",
+    "Patchy freezing drizzle possible": "Cloudy",
+    "Patchy light drizzle": "Cloudy",
+    "Light drizzle": "Cloudy",
+    "Freezing drizzle": "Cloudy",
+    "Heavy freezing drizzle": "Cloudy",
+    "Patchy light snow": "Cloudy",
+    "Light snow": "Cloudy",
+    "Patchy moderate snow": "Cloudy",
+    "Moderate snow": "Cloudy",
+    "Patchy heavy snow": "Cloudy",
+    "Heavy snow": "Cloudy",
+    "Light sleet": "Cloudy",
+    "Moderate or heavy sleet": "Cloudy",
+    "Ice pellets": "Cloudy",
+    "Light showers of ice pellets": "Cloudy",
+    "Moderate or heavy showers of ice pellets": "Cloudy",
+    "Light snow showers": "Cloudy",
+    "Moderate or heavy snow showers": "Cloudy",
+    "Light sleet showers": "Cloudy",
+    "Moderate or heavy sleet showers": "Cloudy",
+    "Blizzard": "Cloudy",
 
-        # Rainy
-        "Patchy rain possible": "Rainy",
-        "Thundery outbreaks possible": "Rainy",
-        "Patchy light rain": "Rainy",
-        "Light rain": "Rainy",
-        "Moderate rain at times": "Rainy",
-        "Moderate rain": "Rainy",
-        "Heavy rain at times": "Rainy",
-        "Heavy rain": "Rainy",
-        "Light freezing rain": "Rainy",
-        "Moderate or heavy freezing rain": "Rainy",
-        "Light rain shower": "Rainy",
-        "Moderate or heavy rain shower": "Rainy",
-        "Torrential rain shower": "Rainy",
-        "Patchy light rain with thunder": "Rainy",
-        "Moderate or heavy rain with thunder": "Rainy",
-        "Patchy light snow with thunder": "Rainy",
-        "Moderate or heavy snow with thunder": "Rainy",
+    # Rainy
+    "Patchy rain possible": "Rainy",
+    "Thundery outbreaks possible": "Rainy",
+    "Patchy light rain": "Rainy",
+    "Light rain": "Rainy",
+    "Moderate rain at times": "Rainy",
+    "Moderate rain": "Rainy",
+    "Heavy rain at times": "Rainy",
+    "Heavy rain": "Rainy",
+    "Light freezing rain": "Rainy",
+    "Moderate or heavy freezing rain": "Rainy",
+    "Light rain shower": "Rainy",
+    "Moderate or heavy rain shower": "Rainy",
+    "Torrential rain shower": "Rainy",
+    "Patchy light rain with thunder": "Rainy",
+    "Moderate or heavy rain with thunder": "Rainy",
+    "Patchy light snow with thunder": "Rainy",
+    "Moderate or heavy snow with thunder": "Rainy",
         }
 
         standardized_condition = WEATHER_MAPPING.get(raw_condition, "Unknown")
@@ -115,13 +114,12 @@ def predict_from_firebase():
         prediction = model.predict(input_data)
 
         return jsonify({
-        'status': 'success',
-        'data': {
             'temperature': temperature,
             'moisture': moisture,
+            'lat': lat,
+            'lon': lon,
             'weather_condition': standardized_condition,
             'prediction': int(prediction[0])
-        }
         })
 
     except Exception as e:

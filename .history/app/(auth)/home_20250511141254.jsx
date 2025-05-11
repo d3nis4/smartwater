@@ -30,8 +30,8 @@ import { ref, get, set, getDatabase, onValue, update } from "firebase/database";
 
 import { realtimeDb } from "../../functions/FirebaseConfig";
 
-const FLASK_SERVER_URL = 'http://10.0.2.2:5000';
-
+const FLASK_SERVER_URL =
+  "http://127.0.0.1:5000";
 
 const Home = () => {
   const [loading, setLoading] = useState(true);
@@ -53,8 +53,8 @@ const Home = () => {
   const realtimeDb = getDatabase();
 
   // Helper function to sanitize email for Firebase paths
-const getSafeEmail = (email) =>
-  email ? email.toLowerCase().replace(/\./g, "_").replace(/@/g, "_") : "";
+  const getSafeEmail = (email) =>
+    email ? email.toLowerCase().replace(/\./g, "_").replace(/@/g, "_") : "";
 
   // Fetch prediction from Flask server
 const fetchSmartPrediction = async (safeEmail) => {

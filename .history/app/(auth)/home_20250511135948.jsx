@@ -30,8 +30,8 @@ import { ref, get, set, getDatabase, onValue, update } from "firebase/database";
 
 import { realtimeDb } from "../../functions/FirebaseConfig";
 
-const FLASK_SERVER_URL = 'http://10.0.2.2:5000';
-
+const FLASK_SERVER_URL =
+  "http://10.0.2.2:5000";
 
 const Home = () => {
   const [loading, setLoading] = useState(true);
@@ -53,38 +53,28 @@ const Home = () => {
   const realtimeDb = getDatabase();
 
   // Helper function to sanitize email for Firebase paths
-const getSafeEmail = (email) =>
-  email ? email.toLowerCase().replace(/\./g, "_").replace(/@/g, "_") : "";
+  const getSafeEmail = (email) =>
+    email ? email.toLowerCase().replace(/\./g, "_").replace(/@/g, "_") : "";
 
   // Fetch prediction from Flask server
 const fetchSmartPrediction = async (safeEmail) => {
   try {
-    console.log(`Fetching prediction for: ${safeEmail}`);
-    const response = await fetch(
-      `${FLASK_SERVER_URL}/predict_from_firebase?user_id=${safeEmail}`
-    );
-    
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    
+    const response = await fetch(`${FLASK_SERVER_URL}/predict_from_firebase?user_id=${safeEmail}`);
     const data = await response.json();
-    console.log("Prediction response:", data);
+    console.log("Fetching prediction for:", safeEmail);
 
-    if (data.status === 'success' && data.data?.prediction !== undefined) {
+    if (data.prediction !== undefined) {
       await set(
         ref(db, `users/${safeEmail}/controls/pumpStatus`),
-        data.data.prediction === 1 ? "on" : "off"
+        data.prediction === 1 ? "on" : "off"
       );
-      return data.data.prediction;
-    } else {
-      throw new Error('Invalid prediction data');
     }
   } catch (error) {
-    console.error("Prediction error:", error);
-    throw error;
+    console.error("Smart prediction error:", error);
   }
 };
+
+
   // Handle pump mode change
   const handlePumpModeChange = async (newMode) => {
     if (!user?.email) return;
@@ -686,29 +676,6 @@ const fetchSmartPrediction = async (safeEmail) => {
   const email = user?.email || ""; // Folosim operatorul de coalescență pentru a evita erorile dacă user sau email sunt null/undefined
   const username = email.split("@")[0]; // Împarte email-ul la '@' și ia prima parte
 
-
-
-  // // Handle manual pump controls
-  // const handlePumpControl = async (action) => {
-  //   if (!user?.email) return;
-
-  //   try {
-  //     const safeEmail = getSafeEmail(user.email);
-  //     const pumpStatusRef = ref(db, `users/${safeEmail}/controls/pumpStatus`);
-
-  //     if (action === "start") {
-  //       await set(pumpStatusRef, "on");
-  //       await set(ref(db, `users/${safeEmail}/controls/override`), false);
-  //       setOverrideActive(false);
-  //     } else {
-  //       await set(pumpStatusRef, "off");
-  //       await set(ref(db, `users/${safeEmail}/controls/override`), true);
-  //       setOverrideActive(true);
-  //     }
-  //   } catch (error) {
-  //     console.error("Pump control error:", error);
-  //   }
-  // };
   return (
     <ScrollView style={styles.container}>
       {/* Header Section */}

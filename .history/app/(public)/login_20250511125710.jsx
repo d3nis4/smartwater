@@ -114,12 +114,6 @@ const Login = () => {
               />
             </TouchableOpacity>
           </View>
-          {/* Link to Reset Password */}
-        <View style={{ marginTop: 10 }}>
-          <TouchableOpacity onPress={() => router.push('/reset')}>
-            <Text style={styles.link}>Ai uitat parola?</Text>
-          </TouchableOpacity>
-        </View>
           {error && <Text style={styles.errorMessage}>{error}</Text>}
         </View>
 
@@ -130,12 +124,10 @@ const Login = () => {
           </TouchableOpacity>
         </View>
 
-        
-
         {/* Link to Reset Password */}
         <View style={{ marginTop: 20 }}>
-          <TouchableOpacity onPress={() => router.push('/register')}>
-            <Text style={styles.link}>Nu ai cont? Înregistrează-te.</Text>
+          <TouchableOpacity onPress={() => router.push('/reset')}>
+            <Text style={styles.link}>Ai uitat parola?</Text>
           </TouchableOpacity>
         </View>
       </View>

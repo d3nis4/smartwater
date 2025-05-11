@@ -1,29 +1,25 @@
-from flask import Flask, jsonify, request
-from flask_cors import CORS
+
 import requests
+from flask import Flask, jsonify
 import joblib
 import numpy as np
-
 
 # Încarcă modelul Random Forest
 model = joblib.load('random_forest_model.pkl')
 
 app = Flask(__name__)
-CORS(app) 
 
 FIREBASE_URL = 'https://smartwater-d025f-default-rtdb.europe-west1.firebasedatabase.app'
 WEATHER_API_KEY = 'd7a2b68d9b114c62aa9134640243110'
 WEATHER_API_URL = 'http://api.weatherapi.com/v1/current.json'  
 
+@app.route('/predict_from_firebase', methods=['GET'])
 
 @app.route('/predict_from_firebase', methods=['GET'])
 def predict_from_firebase():
     try:
-        user_id = request.args.get('user_id')
-        if not user_id:
-            return jsonify({'error': 'user_id parameter is required'}), 400
-        
-        response = requests.get(f"{FIREBASE_URL}/users/{user_id}.json")
+        # Accesează datele din Firebase
+        response = requests.get(f"{FIREBASE_URL}/users/danciudenisa12_gmail_com.json")
         response.raise_for_status()
         data = response.json()
 
@@ -115,13 +111,12 @@ def predict_from_firebase():
         prediction = model.predict(input_data)
 
         return jsonify({
-        'status': 'success',
-        'data': {
             'temperature': temperature,
             'moisture': moisture,
+            'lat': lat,
+            'lon': lon,
             'weather_condition': standardized_condition,
             'prediction': int(prediction[0])
-        }
         })
 
     except Exception as e:
