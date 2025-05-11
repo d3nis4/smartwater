@@ -46,10 +46,10 @@ def predict_from_firebase():
 
        
         WEATHER_MAPPING = {
-  
+            #Sunny
             "Sunny": "Sunny",
             "Clear": "Sunny",
-      
+            # Cloudy
         "Partly cloudy": "Cloudy",
         "Cloudy": "Cloudy",
         "Overcast": "Cloudy",
@@ -81,7 +81,7 @@ def predict_from_firebase():
         "Moderate or heavy sleet showers": "Cloudy",
         "Blizzard": "Cloudy",
 
-
+        # Rainy
         "Patchy rain possible": "Rainy",
         "Thundery outbreaks possible": "Rainy",
         "Patchy light rain": "Rainy",
@@ -139,7 +139,7 @@ def get_current_weather_condition(lat, lon):
         response.raise_for_status()
         weather_data = response.json()
 
-     
+        # Returnează doar textul condiției meteo actuale
         return weather_data['current']['condition']['text']
 
     except Exception as e:

@@ -81,7 +81,7 @@ def predict_from_firebase():
         "Moderate or heavy sleet showers": "Cloudy",
         "Blizzard": "Cloudy",
 
-
+        # Rainy
         "Patchy rain possible": "Rainy",
         "Thundery outbreaks possible": "Rainy",
         "Patchy light rain": "Rainy",

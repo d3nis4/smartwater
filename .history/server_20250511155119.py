@@ -44,12 +44,12 @@ def predict_from_firebase():
         raw_condition = weather_data['current']['condition']['text']
         print(f"[DEBUG] Condiție meteo actuală: {raw_condition}")
 
-       
+        # Mapare condiții meteo API → cele din model
         WEATHER_MAPPING = {
-  
+            #Sunny
             "Sunny": "Sunny",
             "Clear": "Sunny",
-      
+            # Cloudy
         "Partly cloudy": "Cloudy",
         "Cloudy": "Cloudy",
         "Overcast": "Cloudy",
@@ -81,7 +81,7 @@ def predict_from_firebase():
         "Moderate or heavy sleet showers": "Cloudy",
         "Blizzard": "Cloudy",
 
-
+        # Rainy
         "Patchy rain possible": "Rainy",
         "Thundery outbreaks possible": "Rainy",
         "Patchy light rain": "Rainy",
@@ -106,11 +106,11 @@ def predict_from_firebase():
             print(f"[WARNING] Condiție meteo necunoscută: {raw_condition}")
             return jsonify({'error': f'Condiție meteo necunoscută: {raw_condition}'}), 500
 
-    
+        # Convertim în cod numeric
         WEATHER_CONDITION_MAP = {'Cloudy': 0, 'Rainy': 1, 'Sunny': 2}
         weather_code = WEATHER_CONDITION_MAP[standardized_condition]
 
-
+        # Pregătim datele pentru predicție
         input_data = np.array([[moisture, temperature, weather_code]])
         prediction = model.predict(input_data)
 
@@ -139,7 +139,7 @@ def get_current_weather_condition(lat, lon):
         response.raise_for_status()
         weather_data = response.json()
 
-     
+        # Returnează doar textul condiției meteo actuale
         return weather_data['current']['condition']['text']
 
     except Exception as e:
