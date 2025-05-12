@@ -1,0 +1,7 @@
+runtime: python310
+entrypoint: gunicorn -b :$PORT server:app
+
+env_variables:
+  WEATHER_API_KEY: "d7a2b68d9b114c62aa9134640243110"
+  FIREBASE_URL: "https://smartwater-d025f-default-rtdb.europe-west1.firebasedatabase.app"
+  WEATHER_API_URL: "http://api.weatherapi.com/v1/current.json"

@@ -1,29 +1,28 @@
-from flask import Flask, jsonify, request
-from flask_cors import CORS
+
 import requests
+from flask import Flask, jsonify
 import joblib
 import numpy as np
+from dotenv import load_dotenv
+import os
 
-
+load_dotenv()  
 
 model = joblib.load('random_forest_model.pkl')
 
 app = Flask(__name__)
-CORS(app) 
 
 FIREBASE_URL = 'https://smartwater-d025f-default-rtdb.europe-west1.firebasedatabase.app'
 WEATHER_API_KEY = 'd7a2b68d9b114c62aa9134640243110'
-WEATHER_API_URL = 'http://api.weatherapi.com/v1/current.json'  
+WEATHER_API_URL = 'http://api.weatherapi.com/v1/current.json'  # ATENȚIE: endpoint corect pentru vreme actuală
 
+@app.route('/predict_from_firebase', methods=['GET'])
 
 @app.route('/predict_from_firebase', methods=['GET'])
 def predict_from_firebase():
     try:
-        user_id = request.args.get('user_id')
-        if not user_id:
-            return jsonify({'error': 'user_id parameter is required'}), 400
-        
-        response = requests.get(f"{FIREBASE_URL}/users/{user_id}.json")
+        # Accesează datele din Firebase
+        response = requests.get(f"{FIREBASE_URL}/users/danciudenisa12_gmail_com.json")
         response.raise_for_status()
         data = response.json()
 
@@ -34,7 +33,7 @@ def predict_from_firebase():
 
         print(f"[DEBUG] Date Firebase: temperature={temperature}, moisture={moisture}, lat={lat}, lon={lon}")
 
-     
+        # Obține condiția meteo actuală
         weather_response = requests.get(
             WEATHER_API_URL,
             params={'key': WEATHER_API_KEY, 'q': f'{lat},{lon}', 'days': 1, 'lang': 'en'}
@@ -44,11 +43,10 @@ def predict_from_firebase():
         raw_condition = weather_data['current']['condition']['text']
         print(f"[DEBUG] Condiție meteo actuală: {raw_condition}")
 
-       
+        # Mapare condiții meteo API → cele din model
         WEATHER_MAPPING = {
-  
-            "Sunny": "Sunny",
-            "Clear": "Sunny",
+        "Sunny": "Sunny",
+        "Clear": "Sunny",
       
         "Partly cloudy": "Cloudy",
         "Cloudy": "Cloudy",
@@ -106,22 +104,21 @@ def predict_from_firebase():
             print(f"[WARNING] Condiție meteo necunoscută: {raw_condition}")
             return jsonify({'error': f'Condiție meteo necunoscută: {raw_condition}'}), 500
 
-    
+        # Convertim în cod numeric
         WEATHER_CONDITION_MAP = {'Cloudy': 0, 'Rainy': 1, 'Sunny': 2}
         weather_code = WEATHER_CONDITION_MAP[standardized_condition]
 
-
+        # Pregătim datele pentru predicție
         input_data = np.array([[moisture, temperature, weather_code]])
         prediction = model.predict(input_data)
 
         return jsonify({
-        'status': 'success',
-        'data': {
             'temperature': temperature,
             'moisture': moisture,
+            'lat': lat,
+            'lon': lon,
             'weather_condition': standardized_condition,
             'prediction': int(prediction[0])
-        }
         })
 
     except Exception as e:
@@ -139,7 +136,7 @@ def get_current_weather_condition(lat, lon):
         response.raise_for_status()
         weather_data = response.json()
 
-     
+        # Returnează doar textul condiției meteo actuale
         return weather_data['current']['condition']['text']
 
     except Exception as e:

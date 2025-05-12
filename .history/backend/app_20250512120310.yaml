@@ -1,0 +1,7 @@
+runtime: python39
+entrypoint: gunicorn -b :$PORT server:app
+
+env_variables:
+  WEATHER_API_KEY: "cheia_ta"
+  FIREBASE_URL: "urlul_tau_firebase"
+  WEATHER_API_URL: "urlul_tau_weather_api"

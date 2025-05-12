@@ -1,0 +1,15 @@
+runtime: python310
+entrypoint: gunicorn -b :$PORT server:app
+
+env_variables:
+  WEATHER_API_KEY: "d7a2b68d9b114c62aa9134640243110"
+  FIREBASE_URL: "https://smartwater-d025f-default-rtdb.europe-west1.firebasedatabase.app"
+  WEATHER_API_URL: "http://api.weatherapi.com/v1/current.json"
+
+automatic_scaling:
+  min_instances: 1  # Minimul de instanțe care trebuie să fie activ
+  max_instances: 10  # Maximul de instanțe care pot fi create în funcție de trafic
+  target_cpu_utilization: 0.65
+
+instance_class: F2  # Setează tipul de instanță, poți alege și altul dacă e necesar (F1, F2, etc.)
+

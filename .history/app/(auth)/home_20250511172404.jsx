@@ -30,7 +30,8 @@ import { ref, get, set, getDatabase, onValue, update } from "firebase/database";
 
 import { realtimeDb } from "../../functions/FirebaseConfig";
 
-const FLASK_SERVER_URL ="https://smartwater-d025f.ew.r.appspot.com";
+const FLASK_SERVER_URL =
+  "http://127.0.0.1:5000";
 
 const Home = () => {
   const [loading, setLoading] = useState(true);
