@@ -739,9 +739,11 @@ const iconSourceTomorrow =
                           forecastDays
                         );
                         const conditionText = hour.condition.text;
-                        
-                       
-                        const isDayBool = isDay === "Zi"; 
+                        console.log(
+                          `🕒 ${hour.time} | 🌞 Este zi? ${isDay} | 🌤 Condiție: ${hour.condition.text}`
+                        );
+                        // Alegerea imaginii din weatherImages
+                        const isDayBool = isDay === "Zi"; // sau un alt check, depinde ce returnează funcția ta
                         const conditionKey = isDayBool
                           ? conditionText
                           : `${conditionText} noaptea`;
@@ -1259,43 +1261,29 @@ const iconSourceTomorrow =
       uri: `https:${hour.condition.icon}`,
     };
 
-return (
-  <View key={index} style={styles.hourlyItem}>
-    <View style={styles.hourlyContent}>
+  return (
+    <View key={index} style={styles.hourlyItem}>
       <Text style={[styles.hourlyTime, dynamicStyles.text]}>
         {currentHour}:00
       </Text>
-
       <Image
         source={iconSource}
         style={styles.hourlyIcon}
         resizeMode="contain"
       />
-
       <Text style={[styles.hourlyTemp, dynamicStyles.text]}>
         {Math.round(hour.temp_c)}°C
       </Text>
-
       <View style={styles.precipitationContainer}>
         <Text style={[styles.precipitationValue, dynamicStyles.text]}>
           {hour.precip_mm} mm
         </Text>
-        <Text
-          style={[
-            styles.precipitationLabel,
-            dynamicStyles.text,
-            { textAlign: "center" },
-          ]}
-          numberOfLines={2}
-          ellipsizeMode="tail"
-        >
+        <Text style={[styles.precipitationLabel, dynamicStyles.text]}>
           {conditionText}
         </Text>
       </View>
     </View>
-  </View>
-);
-
+  );
 })}
 
                     </ScrollView>
@@ -2060,11 +2048,6 @@ const styles = StyleSheet.create({
     marginBottom: 15,
     marginTop: 20,
   },
-  hourlyContent: {
-  flex: 1,
-  justifyContent: "space-between",
-  alignItems: "center",
-},
   hourlyItem: {
     alignItems: "center",
     justifyContent: "center",
@@ -2073,8 +2056,6 @@ const styles = StyleSheet.create({
     padding: 10,
     marginRight: 10,
     width: 80,
-     height: 160,
-     justifyContent: "space-between",
   },
   hourlyTime: {
     // color: '#fff',

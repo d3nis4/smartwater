@@ -10,8 +10,7 @@ import {
   SafeAreaView,
   ScrollView,
   StatusBar,
-  StyleSheet,
-  ActivityIndicator,
+  StyleSheet,ActivityIndicator 
 } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import Entypo from "@expo/vector-icons/Entypo";
@@ -44,70 +43,35 @@ const getDynamicStyles = (tempC) =>
     },
   });
 
-function convertTo24Hour(time12h) {
-  const [time, modifier] = time12h.split(" ");
-  let [hours, minutes] = time.split(":").map(Number);
-  if (modifier === "PM" && hours !== 12) hours += 12;
-  if (modifier === "AM" && hours === 12) hours = 0;
-  return { hours, minutes };
+
+function isDayTimeFromDateTime(hourDateTime, forecastDays) {
+  const dateObj = new Date(hourDateTime);
+  const localDateStr = hourDateTime.split(" ")[0];
+
+  const matchingDay = forecastDays.find(day => day.date === localDateStr);
+  if (!matchingDay) return true;
+
+  const { sunrise, sunset } = matchingDay.astro;
+
+  // Funcție auxiliară care convertește "6:00 AM" în număr de minute de la miezul nopții
+  const timeStrToMinutes = (timeStr) => {
+    const [hour, minute, period] = timeStr.split(/[: ]/);
+    let h = parseInt(hour);
+    if (period === "PM" && h !== 12) h += 12;
+    if (period === "AM" && h === 12) h = 0;
+    return h * 60 + parseInt(minute);
+  };
+
+  const dateMinutes = dateObj.getHours() * 60 + dateObj.getMinutes();
+  const sunriseMinutes = timeStrToMinutes(sunrise);
+  const sunsetMinutes = timeStrToMinutes(sunset);
+
+  return dateMinutes >= sunriseMinutes && dateMinutes < sunsetMinutes;
 }
 
-function isDayTimeFromDateTime(dateTimeStr, forecastDays) {
-  const inputDate = new Date(dateTimeStr);
-  const hour = inputDate.getHours();
-
-  // Între 22:00 și 06:00 este noapte indiferent de răsărit/apus
-  if (hour >= 22 || hour < 6) {
-    return "Noapte";
-  }
-
-  // Construim string data locală pentru matching cu forecast
-  const inputDateStr = `${inputDate.getFullYear()}-${String(
-    inputDate.getMonth() + 1
-  ).padStart(2, "0")}-${String(inputDate.getDate()).padStart(2, "0")}`;
-
-  const matchingDay = forecastDays.find((day) => day.date === inputDateStr);
-
-  if (!matchingDay) {
-    // fallback dacă nu găsim ziua în forecast
-    return "Zi";
-  }
-
-  // Convertim ora răsăritului și apusului în format 24h
-  function convertTo24Hour(time12h) {
-    const [time, modifier] = time12h.split(" ");
-    let [hours, minutes] = time.split(":").map(Number);
-    if (modifier === "PM" && hours !== 12) hours += 12;
-    if (modifier === "AM" && hours === 12) hours = 0;
-    return { hours, minutes };
-  }
-
-  const sunriseTime = convertTo24Hour(matchingDay.astro.sunrise);
-  const sunsetTime = convertTo24Hour(matchingDay.astro.sunset);
-
-  const sunriseDate = new Date(
-    inputDate.getFullYear(),
-    inputDate.getMonth(),
-    inputDate.getDate(),
-    sunriseTime.hours,
-    sunriseTime.minutes
-  );
-  const sunsetDate = new Date(
-    inputDate.getFullYear(),
-    inputDate.getMonth(),
-    inputDate.getDate(),
-    sunsetTime.hours,
-    sunsetTime.minutes
-  );
-
-  if (inputDate >= sunriseDate && inputDate < sunsetDate) {
-    return "Zi";
-  } else {
-    return "Noapte";
-  }
-}
 
 const WeatherComponent = () => {
+  const forecastDays = weather?.forecast?.forecastday || [];
   const [loading, setLoading] = useState(true);
   const [weather, setWeather] = useState({});
   const [location, setLocation] = useState(null);
@@ -394,43 +358,18 @@ const WeatherComponent = () => {
     return hourDate >= now && hourDate <= in24h;
   });
 
-  if (!weather || !weather.forecast || !weather.forecast.forecastday) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#3498db" />
-        <Text style={styles.loadingText}>Se încarcă datele meteo...</Text>
-      </View>
-    );
-  }
-
-  const currentHourTime = new Date()
-    .toISOString()
-    .slice(0, 19)
-    .replace("T", " ");
-  const isDay = isDayTimeFromDateTime(
-    currentHourTime,
-    weather.forecast.forecastday
+if (!weather || !weather.forecast || !weather.forecast.forecastday) {
+  return (
+    <View style={styles.loadingContainer}>
+      <ActivityIndicator size="large" color="#3498db" />
+      <Text style={styles.loadingText}>Se încarcă datele meteo...</Text>
+    </View>
   );
-  const conditionText = weather.current.condition.text;
-  const forecastDays = weather?.forecast?.forecastday;
+}
 
-
-
-  const tomorrowHour = forecastDays[1].hour[12]; // exemplu: ora 12 din ziua de mâine
-const isDayTimeTomorrow = isDayTimeFromDateTime(tomorrowHour.time, forecastDays);
-const conditionTextTomorrow = tomorrowHour.condition.text;
-
-// Adaugă " noaptea" dacă este noapte
-const conditionKeyTomorrow = isDayTimeTomorrow === "Zi"
-  ? conditionTextTomorrow
-  : `${conditionTextTomorrow} noaptea`;
-
-const iconSourceTomorrow =
-  weatherImages[isDayTimeTomorrow === "Zi" ? "day" : "night"][conditionKeyTomorrow] || {
-    uri: `https:${tomorrowHour.condition.icon}`,
-  };
-
-
+const currentHourTime = new Date().toISOString().slice(0, 19).replace("T", " ");
+const isDay = isDayTimeFromDateTime(currentHourTime, weather.forecast.forecastday);
+const conditionText = weather.current.condition.text;
   return (
     <View style={styles.container}>
       <LinearGradient
@@ -609,16 +548,14 @@ const iconSourceTomorrow =
                       {/* Weather icon and condition */}
                       <View style={{ alignItems: "flex-start" }}>
                         <Image
-                          style={styles.weatherImage}
-                          source={
-                            weatherImages[isDay ? "day" : "night"][
-                              conditionText
-                            ] || {
-                              uri: `https:${weather.current.condition.icon}`,
-                            }
-                          }
-                          resizeMode="contain"
-                        />
+      style={styles.weatherImage}
+      source={
+        weatherImages[
+          isDay ? "day" : "night"
+        ][conditionText] || { uri: `https:${weather.current.condition.icon}` }
+      }
+      resizeMode="contain"
+    />
                       </View>
                     </View>
 
@@ -734,23 +671,15 @@ const iconSourceTomorrow =
                       {next24Hours.map((hour, index) => {
                         const hourDate = new Date(hour.time);
                         const currentHour = hourDate.getHours();
-                        const isDay = isDayTimeFromDateTime(
-                          hour.time,
-                          forecastDays
-                        );
+                     const isDay = isDayTimeFromDateTime(hour.time, forecastDays);
                         const conditionText = hour.condition.text;
-                        
-                       
-                        const isDayBool = isDay === "Zi"; 
-                        const conditionKey = isDayBool
-                          ? conditionText
-                          : `${conditionText} noaptea`;
 
+                        // Alegerea imaginii din weatherImages
                         const iconSource = weatherImages[
-                          isDayBool ? "day" : "night"
-                        ][conditionKey] || {
+                          isDay ? "day" : "night"
+                        ][conditionText] || {
                           uri: `https:${hour.condition.icon}`,
-                        };
+                        }; // fallback la pictograma API
 
                         return (
                           <View key={index} style={styles.hourlyItem}>
@@ -1190,9 +1119,15 @@ const iconSourceTomorrow =
                     <View style={{ flex: 1 }}>
                       {/* Weather icon and condition */}
                       <View style={{ alignItems: "left" }}>
-                       <Image
+                        <Image
                           style={styles.weatherImage}
-                          source={iconSourceTomorrow}
+                          source={
+                            weatherImages[
+                              weather?.forecast?.forecastday[1]?.day?.condition?.text.trim()
+                            ] || {
+                              uri: `https:${weather?.forecast?.forecastday[1]?.day?.condition?.icon}`,
+                            }
+                          }
                           resizeMode="contain"
                         />
                       </View>
@@ -1230,7 +1165,44 @@ const iconSourceTomorrow =
                     </Text>
                   </View>
 
-            
+                  {/* Weather Alerts MAINE */}
+                  {/* {weather?.alerts?.alert && weather.alerts.alert.length > 0 ? (
+                      <View style={styles.alertContainer}>
+                        <Text style={[dynamicStyles.text, styles.alertTitle]}>Alerte meteo:</Text>
+                        <View style={styles.alertItem}>
+                          <Text style={[dynamicStyles.text, styles.alertHeadline]}>{weather.alerts.alert[0].headline}</Text>
+                          <Text style={[dynamicStyles.text, styles.alertDescription]}>{weather.alerts.alert[0].desc}</Text>
+                          <Text style={[dynamicStyles.text, styles.alertTime]}>
+                            Valabil de la:{' '}
+                            {new Date(weather.alerts.alert[0].effective).toLocaleDateString('ro-RO', {
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric',
+                            })}{' '}
+                            ora: {new Date(weather.alerts.alert[0].effective).toLocaleTimeString('ro-RO', {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
+                            {'\n'}
+                            Până la:{' '}
+                            {new Date(weather.alerts.alert[0].expires).toLocaleDateString('ro-RO', {
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric',
+                            })}
+                            {' '}ora: {new Date(weather.alerts.alert[0].expires).toLocaleTimeString('ro-RO', {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
+                          </Text>
+                        </View>
+
+                      </View>
+                    ) : (
+                      <View style={styles.noAlertContainer}>
+                        <Text style={[dynamicStyles.text, styles.noAlertText]}>NO WEATHER ALERTS</Text>
+                      </View>
+                    )} */}
 
                   {/* Hourly temperatura si precipitatii for TOMORROW */}
                   <View style={{ marginTop: -5 }}>
@@ -1242,62 +1214,44 @@ const iconSourceTomorrow =
                       showsHorizontalScrollIndicator={false}
                       contentContainerStyle={{ paddingHorizontal: 10 }}
                     >
-                      {weather?.forecast?.forecastday[1]?.hour.map((hour, index) => {
-  const hourDate = new Date(hour.time);
-  const currentHour = hourDate.getHours();
-
-  // Determină dacă e zi sau noapte pentru ora respectivă
-  const isDay = isDayTimeFromDateTime(hour.time, weather.forecast.forecastday);
-  const isDayBool = isDay === "Zi"; // ajustează în funcție de ce returnează funcția ta
-
-  const conditionText = hour.condition.text;
-  const conditionKey = isDayBool ? conditionText : `${conditionText} noaptea`;
-
-  // Obține imaginea potrivită
-  const iconSource =
-    weatherImages[isDayBool ? "day" : "night"][conditionKey] || {
-      uri: `https:${hour.condition.icon}`,
-    };
-
-return (
-  <View key={index} style={styles.hourlyItem}>
-    <View style={styles.hourlyContent}>
-      <Text style={[styles.hourlyTime, dynamicStyles.text]}>
-        {currentHour}:00
-      </Text>
-
-      <Image
-        source={iconSource}
-        style={styles.hourlyIcon}
-        resizeMode="contain"
-      />
-
-      <Text style={[styles.hourlyTemp, dynamicStyles.text]}>
-        {Math.round(hour.temp_c)}°C
-      </Text>
-
-      <View style={styles.precipitationContainer}>
-        <Text style={[styles.precipitationValue, dynamicStyles.text]}>
-          {hour.precip_mm} mm
-        </Text>
-        <Text
-          style={[
-            styles.precipitationLabel,
-            dynamicStyles.text,
-            { textAlign: "center" },
-          ]}
-          numberOfLines={2}
-          ellipsizeMode="tail"
-        >
-          {conditionText}
-        </Text>
-      </View>
-    </View>
-  </View>
-);
-
-})}
-
+                      {weather?.forecast?.forecastday[1]?.hour.map(
+                        (hour, index) => (
+                          <View key={index} style={styles.hourlyItem}>
+                            <Text
+                              style={[styles.hourlyTime, dynamicStyles.text]}
+                            >
+                              {new Date(hour.time).getHours()}:00
+                            </Text>
+                            <Image
+                              source={{ uri: `https:${hour.condition.icon}` }}
+                              style={styles.hourlyIcon}
+                            />
+                            <Text
+                              style={[styles.hourlyTemp, dynamicStyles.text]}
+                            >
+                              {Math.round(hour.temp_c)}°C
+                            </Text>
+                            <View style={styles.precipitationContainer}>
+                              <Text
+                                style={[
+                                  styles.precipitationLabel,
+                                  dynamicStyles.text,
+                                ]}
+                              >
+                                Precipitații
+                              </Text>
+                              <Text
+                                style={[
+                                  styles.precipitationValue,
+                                  dynamicStyles.text,
+                                ]}
+                              >
+                                {hour.precip_mm} mm
+                              </Text>
+                            </View>
+                          </View>
+                        )
+                      )}
                     </ScrollView>
                   </View>
 
@@ -2060,11 +2014,6 @@ const styles = StyleSheet.create({
     marginBottom: 15,
     marginTop: 20,
   },
-  hourlyContent: {
-  flex: 1,
-  justifyContent: "space-between",
-  alignItems: "center",
-},
   hourlyItem: {
     alignItems: "center",
     justifyContent: "center",
@@ -2073,8 +2022,6 @@ const styles = StyleSheet.create({
     padding: 10,
     marginRight: 10,
     width: 80,
-     height: 160,
-     justifyContent: "space-between",
   },
   hourlyTime: {
     // color: '#fff',
@@ -2251,13 +2198,13 @@ const styles = StyleSheet.create({
   },
   loadingContainer: {
     flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   loadingText: {
     marginTop: 10,
     fontSize: 16,
-    color: "#3498db",
+    color: '#3498db',
   },
 });
 

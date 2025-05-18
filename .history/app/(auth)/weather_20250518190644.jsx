@@ -2064,7 +2064,8 @@ const styles = StyleSheet.create({
   flex: 1,
   justifyContent: "space-between",
   alignItems: "center",
-},
+}
+
   hourlyItem: {
     alignItems: "center",
     justifyContent: "center",

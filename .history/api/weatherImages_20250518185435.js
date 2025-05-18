@@ -24,9 +24,7 @@ import Soare from '../assets/weatherImages/soare.png';
 import Tornada from '../assets/weatherImages/tornada.png';
 import Tunete from '../assets/weatherImages/tunete.png';
 import Vant from '../assets/weatherImages/vant.png';
-import Nea from '../assets/weatherImages/nea.png'
-import Chiciura from '../assets/weatherImages/chiciura.png'
-
+import Nea from '../assets/weatherImages/'
 export const weatherImages = {
   day: {
     "Soare": Soare,
@@ -65,11 +63,11 @@ export const weatherImages = {
     "Lapoviță de scurtă durată în cantităţi mici": RainAndSleetMix,
     "Lapoviță de scurtă durată în cantităţi mari şi moderate": RainAndSleetMix,
     "Burniță şi polei pe porţiuni în apropiere": Ceata,
-    "Burniță uşoară pe porțiuni": Nea,
-    "Burniță uşoară": Nea,
-    "Burniță înghețată în cantităţi însemnate": Nea,
-    "Burniță înghețată":Nea,
-    "Chiciură":Chiciura,
+    "Burniță uşoară pe porțiuni": Nor,
+    "Burniță uşoară": Nor,
+    "Burniță înghețată în cantităţi însemnate": Ceata,
+    "Burniță înghețată": Ceata,
+    "Chiciură": Ceata,
     "Viscol": Tornada,
     "Ninsoare viscolită": Tornada,
     "Vânt": Vant,

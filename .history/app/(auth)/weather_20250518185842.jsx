@@ -414,23 +414,6 @@ const WeatherComponent = () => {
   const conditionText = weather.current.condition.text;
   const forecastDays = weather?.forecast?.forecastday;
 
-
-
-  const tomorrowHour = forecastDays[1].hour[12]; // exemplu: ora 12 din ziua de mâine
-const isDayTimeTomorrow = isDayTimeFromDateTime(tomorrowHour.time, forecastDays);
-const conditionTextTomorrow = tomorrowHour.condition.text;
-
-// Adaugă " noaptea" dacă este noapte
-const conditionKeyTomorrow = isDayTimeTomorrow === "Zi"
-  ? conditionTextTomorrow
-  : `${conditionTextTomorrow} noaptea`;
-
-const iconSourceTomorrow =
-  weatherImages[isDayTimeTomorrow === "Zi" ? "day" : "night"][conditionKeyTomorrow] || {
-    uri: `https:${tomorrowHour.condition.icon}`,
-  };
-
-
   return (
     <View style={styles.container}>
       <LinearGradient
@@ -739,9 +722,11 @@ const iconSourceTomorrow =
                           forecastDays
                         );
                         const conditionText = hour.condition.text;
-                        
-                       
-                        const isDayBool = isDay === "Zi"; 
+                        console.log(
+                          `🕒 ${hour.time} | 🌞 Este zi? ${isDay} | 🌤 Condiție: ${hour.condition.text}`
+                        );
+                        // Alegerea imaginii din weatherImages
+                        const isDayBool = isDay === "Zi"; // sau un alt check, depinde ce returnează funcția ta
                         const conditionKey = isDayBool
                           ? conditionText
                           : `${conditionText} noaptea`;
@@ -1190,9 +1175,15 @@ const iconSourceTomorrow =
                     <View style={{ flex: 1 }}>
                       {/* Weather icon and condition */}
                       <View style={{ alignItems: "left" }}>
-                       <Image
+                        <Image
                           style={styles.weatherImage}
-                          source={iconSourceTomorrow}
+                          source={
+                            weatherImages[
+                              weather?.forecast?.forecastday[1]?.day?.condition?.text.trim()
+                            ] || {
+                              uri: `https:${weather?.forecast?.forecastday[1]?.day?.condition?.icon}`,
+                            }
+                          }
                           resizeMode="contain"
                         />
                       </View>
@@ -1242,62 +1233,44 @@ const iconSourceTomorrow =
                       showsHorizontalScrollIndicator={false}
                       contentContainerStyle={{ paddingHorizontal: 10 }}
                     >
-                      {weather?.forecast?.forecastday[1]?.hour.map((hour, index) => {
-  const hourDate = new Date(hour.time);
-  const currentHour = hourDate.getHours();
-
-  // Determină dacă e zi sau noapte pentru ora respectivă
-  const isDay = isDayTimeFromDateTime(hour.time, weather.forecast.forecastday);
-  const isDayBool = isDay === "Zi"; // ajustează în funcție de ce returnează funcția ta
-
-  const conditionText = hour.condition.text;
-  const conditionKey = isDayBool ? conditionText : `${conditionText} noaptea`;
-
-  // Obține imaginea potrivită
-  const iconSource =
-    weatherImages[isDayBool ? "day" : "night"][conditionKey] || {
-      uri: `https:${hour.condition.icon}`,
-    };
-
-return (
-  <View key={index} style={styles.hourlyItem}>
-    <View style={styles.hourlyContent}>
-      <Text style={[styles.hourlyTime, dynamicStyles.text]}>
-        {currentHour}:00
-      </Text>
-
-      <Image
-        source={iconSource}
-        style={styles.hourlyIcon}
-        resizeMode="contain"
-      />
-
-      <Text style={[styles.hourlyTemp, dynamicStyles.text]}>
-        {Math.round(hour.temp_c)}°C
-      </Text>
-
-      <View style={styles.precipitationContainer}>
-        <Text style={[styles.precipitationValue, dynamicStyles.text]}>
-          {hour.precip_mm} mm
-        </Text>
-        <Text
-          style={[
-            styles.precipitationLabel,
-            dynamicStyles.text,
-            { textAlign: "center" },
-          ]}
-          numberOfLines={2}
-          ellipsizeMode="tail"
-        >
-          {conditionText}
-        </Text>
-      </View>
-    </View>
-  </View>
-);
-
-})}
-
+                      {weather?.forecast?.forecastday[1]?.hour.map(
+                        (hour, index) => (
+                          <View key={index} style={styles.hourlyItem}>
+                            <Text
+                              style={[styles.hourlyTime, dynamicStyles.text]}
+                            >
+                              {new Date(hour.time).getHours()}:00
+                            </Text>
+                            <Image
+                              source={{ uri: `https:${hour.condition.icon}` }}
+                              style={styles.hourlyIcon}
+                            />
+                            <Text
+                              style={[styles.hourlyTemp, dynamicStyles.text]}
+                            >
+                              {Math.round(hour.temp_c)}°C
+                            </Text>
+                            <View style={styles.precipitationContainer}>
+                              <Text
+                                style={[
+                                  styles.precipitationLabel,
+                                  dynamicStyles.text,
+                                ]}
+                              >
+                                Precipitații
+                              </Text>
+                              <Text
+                                style={[
+                                  styles.precipitationValue,
+                                  dynamicStyles.text,
+                                ]}
+                              >
+                                {hour.precip_mm} mm
+                              </Text>
+                            </View>
+                          </View>
+                        )
+                      )}
                     </ScrollView>
                   </View>
 
@@ -2060,11 +2033,6 @@ const styles = StyleSheet.create({
     marginBottom: 15,
     marginTop: 20,
   },
-  hourlyContent: {
-  flex: 1,
-  justifyContent: "space-between",
-  alignItems: "center",
-},
   hourlyItem: {
     alignItems: "center",
     justifyContent: "center",
@@ -2073,8 +2041,6 @@ const styles = StyleSheet.create({
     padding: 10,
     marginRight: 10,
     width: 80,
-     height: 160,
-     justifyContent: "space-between",
   },
   hourlyTime: {
     // color: '#fff',

@@ -2060,11 +2060,6 @@ const styles = StyleSheet.create({
     marginBottom: 15,
     marginTop: 20,
   },
-  hourlyContent: {
-  flex: 1,
-  justifyContent: "space-between",
-  alignItems: "center",
-},
   hourlyItem: {
     alignItems: "center",
     justifyContent: "center",

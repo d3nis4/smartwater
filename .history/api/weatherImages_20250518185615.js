@@ -26,7 +26,6 @@ import Tunete from '../assets/weatherImages/tunete.png';
 import Vant from '../assets/weatherImages/vant.png';
 import Nea from '../assets/weatherImages/nea.png'
 import Chiciura from '../assets/weatherImages/chiciura.png'
-
 export const weatherImages = {
   day: {
     "Soare": Soare,
@@ -69,7 +68,7 @@ export const weatherImages = {
     "Burniță uşoară": Nea,
     "Burniță înghețată în cantităţi însemnate": Nea,
     "Burniță înghețată":Nea,
-    "Chiciură":Chiciura,
+    "Chiciură":Nea,
     "Viscol": Tornada,
     "Ninsoare viscolită": Tornada,
     "Vânt": Vant,

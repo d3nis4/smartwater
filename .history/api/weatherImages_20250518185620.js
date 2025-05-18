@@ -69,7 +69,7 @@ export const weatherImages = {
     "Burniță uşoară": Nea,
     "Burniță înghețată în cantităţi însemnate": Nea,
     "Burniță înghețată":Nea,
-    "Chiciură":Chiciura,
+    "Chiciură":Nea,
     "Viscol": Tornada,
     "Ninsoare viscolită": Tornada,
     "Vânt": Vant,
