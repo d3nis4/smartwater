@@ -26,8 +26,7 @@ import Tunete from '../assets/weatherImages/tunete.png';
 import Vant from '../assets/weatherImages/vant.png';
 import Nea from '../assets/weatherImages/nea.png'
 import Chiciura from '../assets/weatherImages/chiciura.png'
-import Burnita from '../assets/weatherImages/burnita.png'
-
+import Burnita from ''
 export const weatherImages = {
   day: {
     "Soare": Soare,
@@ -65,11 +64,11 @@ export const weatherImages = {
     "Lapoviță în cantităţi mari şi moderate": RainAndSleetMix,
     "Lapoviță de scurtă durată în cantităţi mici": RainAndSleetMix,
     "Lapoviță de scurtă durată în cantităţi mari şi moderate": RainAndSleetMix,
-    "Burniță şi polei pe porţiuni în apropiere": Burnita,
-    "Burniță uşoară pe porțiuni": Burnita,
-    "Burniță uşoară": Burnita,
-    "Burniță înghețată în cantităţi însemnate": Burnita,
-    "Burniță înghețată":Burnita,
+    "Burniță şi polei pe porţiuni în apropiere": Ceata,
+    "Burniță uşoară pe porțiuni": Nea,
+    "Burniță uşoară": Nea,
+    "Burniță înghețată în cantităţi însemnate": Nea,
+    "Burniță înghețată":Nea,
     "Chiciură":Chiciura,
     "Viscol": Tornada,
     "Ninsoare viscolită": Tornada,
@@ -116,11 +115,11 @@ export const weatherImages = {
     "Lapoviță în cantităţi mari şi moderate noaptea": RainAndSleetMix,
     "Lapoviță de scurtă durată în cantităţi mici noaptea": RainAndSleetMix,
     "Lapoviță de scurtă durată în cantităţi mari şi moderate noaptea": RainAndSleetMix,
-    "Burniță şi polei pe porţiuni în apropiere noaptea": Burnita,
-    "Burniță uşoară pe porțiuni noaptea": Burnita,
-    "Burniță uşoară noaptea": Burnita,
-    "Burniță înghețată în cantităţi însemnate noaptea": Burnita,
-    "Burniță înghețată noaptea": Burnita,
+    "Burniță şi polei pe porţiuni în apropiere noaptea": LunaCeata,
+    "Burniță uşoară pe porțiuni noaptea": NorLuna,
+    "Burniță uşoară noaptea": NorLuna,
+    "Burniță înghețată în cantităţi însemnate noaptea": LunaCeata,
+    "Burniță înghețată noaptea": LunaCeata,
     "Chiciură noaptea": LunaCeata,
     "Viscol noaptea": Tornada,
     "Ninsoare viscolită noaptea": Tornada,

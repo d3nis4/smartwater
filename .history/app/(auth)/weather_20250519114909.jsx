@@ -2110,7 +2110,7 @@ const WeatherComponent = () => {
                           {selectedForecast.speed} m/s
                         </Text>
                       </View>
-                      <View style={styles.detailItem}>
+ <View style={styles.detailItem}>
                         <Feather
                           name="cloud-rain"
                           size={18}
@@ -2124,16 +2124,18 @@ const WeatherComponent = () => {
 
                       <View style={styles.detailItem}>
                         <Feather
-                          name="cloud-snow"
+                          name="snow"
                           size={18}
                           color={Colors.GREEN}
                         />
                         <Text style={styles.detailLabel}>Șanse ninsoare</Text>
-                        <Text style={styles.detailValue}>
-                          {selectedForecast.chance_of_snow ?? 0}%
-                        </Text>
+                       <Text style={styles.detailValue}>
+  {selectedForecast.chance_of_snow ?? 0}%
+</Text>
+
                       </View>
 
+                     
                       {selectedForecast.rain && (
                         <View style={styles.detailItem}>
                           <Feather

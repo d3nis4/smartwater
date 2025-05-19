@@ -12,7 +12,6 @@ import {
   StatusBar,
   StyleSheet,
   ActivityIndicator,
-  RefreshControl,
 } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import Entypo from "@expo/vector-icons/Entypo";
@@ -45,6 +44,14 @@ const getDynamicStyles = (tempC) =>
       color: tempC > 10 ? "rgb(28, 28, 28)" : "rgba(255,255,255,0.9)",
     },
   });
+
+function convertTo24Hour(time12h) {
+  const [time, modifier] = time12h.split(" ");
+  let [hours, minutes] = time.split(":").map(Number);
+  if (modifier === "PM" && hours !== 12) hours += 12;
+  if (modifier === "AM" && hours === 12) hours = 0;
+  return { hours, minutes };
+}
 
 function isDayTimeFromDateTime(dateTimeStr, forecastDays) {
   const inputDate = new Date(dateTimeStr);
@@ -111,19 +118,7 @@ const WeatherComponent = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [selectedHour, setSelectedHour] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
 
-  const onRefresh = async () => {
-    setRefreshing(true);
-    try {
-      // Reîncarcă datele
-      await loadLastCity(); // sau fetchWeatherData(...)
-    } catch (e) {
-      console.error("Refresh error:", e);
-    } finally {
-      setRefreshing(false);
-    }
-  };
   // const [hourlyData, setHourlyData] = useState([]);
   const [selectedDay, setSelectedDay] = useState("TODAY"); // Default to TODAY
   const [selectedForecast, setSelectedForecast] = useState(null);
@@ -204,6 +199,7 @@ const WeatherComponent = () => {
 
       const { coords } = await Location.getCurrentPositionAsync({});
 
+      // Salvează atât coordonatele cât și numele orașului
       const locationString = `${coords.latitude},${coords.longitude}`;
       const reverseGeocode = await Location.reverseGeocodeAsync({
         latitude: coords.latitude,
@@ -214,11 +210,13 @@ const WeatherComponent = () => {
         reverseGeocode[0]?.city ||
         reverseGeocode[0]?.region ||
         "Locație curentă";
+      await AsyncStorage.setItem("lastCity", locationString);
 
+      // Salvează în AsyncStorage sub două chei diferite
       await AsyncStorage.multiSet([
         ["lastCoordinates", locationString],
         ["lastCityName", cityName],
-        ["lastCity", locationString],
+        ["lastCity", locationString], // AICI adăugăm
       ]);
 
       // Actualizează starea
@@ -231,9 +229,6 @@ const WeatherComponent = () => {
         days: "7",
       });
       setWeather(weatherData);
-
-      // 🔁 ADĂUGĂ: fetchExtendedForecastData
-      await fetchExtendedForecastData(coords.latitude, coords.longitude);
     } catch (error) {
       console.error("Error getting location:", error);
     }
@@ -351,7 +346,12 @@ const WeatherComponent = () => {
 
   const weatherCondition =
     weather?.forecast?.forecastday[1]?.day?.condition?.text?.trim(); // Elimină spațiile
+  console.log("stare:", weatherCondition);
 
+  // Verifică dacă există în obiect, altfel folosește 'other'
+  const imageSource = weatherImages[weatherCondition] || weatherImages["other"];
+
+  console.log("Imagine:", imageSource);
   const getTemperatureColors = (tempC) => {
     // Definim paleta de culori cu transparență ajustabilă
     const colorPalettes = {
@@ -435,50 +435,6 @@ const WeatherComponent = () => {
     isDayTimeTomorrow === "Zi" ? "day" : "night"
   ][conditionKeyTomorrow] || {
     uri: `https:${tomorrowHour.condition.icon}`,
-  };
-  const getLocalWeatherImage = (iconCode) => {
-    const hourType = iconCode.includes("d") ? "day" : "night";
-
-    const iconMap = {
-      // 01: Clear sky
-      "01d": "Senin",
-      "01n": "Senin noaptea",
-
-      // 02: Few clouds
-      "02d": "Parțial noros",
-      "02n": "Parțial noros noaptea",
-
-      // 03: Scattered clouds
-      "03d": "Noros",
-      "03n": "Noros noaptea",
-
-      // 04: Broken clouds
-      "04d": "Cer acoperit",
-      "04n": "Cer acoperit noaptea",
-
-      // 09: Shower rain
-      "09d": "Ploi uşoare",
-      "09n": "Ploi uşoare noaptea",
-
-      // 10: Rain
-      "10d": "Ploi moderate",
-      "10n": "Ploi moderate noaptea",
-
-      // 11: Thunderstorm
-      "11d": "Tunete în apropiere",
-      "11n": "Tunete în apropiere noaptea",
-
-      // 13: Snow
-      "13d": "Ninsori moderate",
-      "13n": "Ninsori moderate noaptea",
-
-      // 50: Mist
-      "50d": "Ceață",
-      "50n": "Ceață noaptea",
-    };
-
-    const weatherLabel = iconMap[iconCode] || "Senin"; // fallback la o imagine default
-    return weatherImages[hourType][weatherLabel];
   };
 
   return (
@@ -568,7 +524,7 @@ const WeatherComponent = () => {
               ]}
             >
               <Text style={[dynamicStyles.text, styles.dayButtonText]}>
-                AZI
+                TODAY
               </Text>
             </TouchableOpacity>
 
@@ -580,7 +536,7 @@ const WeatherComponent = () => {
               ]}
             >
               <Text style={[dynamicStyles.text, styles.dayButtonText]}>
-                MÂINE
+                TOMORROW
               </Text>
             </TouchableOpacity>
 
@@ -592,7 +548,7 @@ const WeatherComponent = () => {
               ]}
             >
               <Text style={[dynamicStyles.text, styles.dayButtonText]}>
-                PROGNOZĂ
+                FORECAST
               </Text>
             </TouchableOpacity>
           </View>
@@ -624,15 +580,7 @@ const WeatherComponent = () => {
                   />
                 </View>
               ) : (
-                <ScrollView
-                  refreshControl={
-                    <RefreshControl
-                      refreshing={refreshing}
-                      onRefresh={onRefresh}
-                    />
-                  }
-                  style={{ marginHorizontal: 16, marginTop: -40 }}
-                >
+                <ScrollView style={{ marginHorizontal: 16, marginTop: -40 }}>
                   {/* Location Info */}
                   <Text
                     style={[
@@ -779,9 +727,9 @@ const WeatherComponent = () => {
                   {/* ---------------------------------------------------------**/}
                   {/* Hourly Temp &precip for Today */}
                   {/* Hourly Temp & Precip for Today */}
-                  <View style={{ marginTop: -25 }}>
+                  <View style={{ marginTop: -5 }}>
                     <Text style={[dynamicStyles.text, styles.sectionTitle]}>
-                      Vremea în următoarele 24 de ore
+                      Vremea pe ore (următoarele 24h)
                     </Text>
 
                     <ScrollView
@@ -846,202 +794,174 @@ const WeatherComponent = () => {
                                   style={[
                                     styles.precipitationLabel,
                                     dynamicStyles.text,
-                                    { textAlign: "center" },
                                   ]}
-                                  numberOfLines={2}
-                                  ellipsizeMode="tail"
                                 >
                                   {conditionText}
                                 </Text>
                               </View>
-                            </View>
+                            </View> 
                           </TouchableOpacity>
                         );
                       })}
                     </ScrollView>
                   </View>
-                  {selectedHour &&
-                    (() => {
-                      const isDay = isDayTimeFromDateTime(
-                        selectedHour.time,
-                        weather.forecast.forecastday
-                      );
-                      const isDayBool = isDay === "Zi";
+                  {selectedHour && (() => {
+  const isDay = isDayTimeFromDateTime(
+    selectedHour.time,
+    weather.forecast.forecastday
+  );
+  const isDayBool = isDay === "Zi";
 
-                      const conditionText = selectedHour.condition.text;
-                      const conditionKey = isDayBool
-                        ? conditionText
-                        : `${conditionText} noaptea`;
+  const conditionText = selectedHour.condition.text;
+  const conditionKey = isDayBool
+    ? conditionText
+    : `${conditionText} noaptea`;
 
-                      const iconSource = weatherImages[
-                        isDayBool ? "day" : "night"
-                      ][conditionKey] || {
-                        uri: `https:${selectedHour.condition.icon}`,
-                      };
+  const iconSource =
+    weatherImages[isDayBool ? "day" : "night"][conditionKey] || {
+      uri: `https:${selectedHour.condition.icon}`,
+    };
 
-                      return (
-                        <Modal
-                          animationType="fade"
-                          transparent={true}
-                          visible={modalVisible}
-                          onRequestClose={() => setModalVisible(false)}
-                        >
-                          <TouchableOpacity
-                            style={styles.modalOverlay}
-                            activeOpacity={1}
-                            onPress={() => setModalVisible(false)}
-                          >
-                            <TouchableOpacity
-                              activeOpacity={1}
-                              style={styles.modalContainer}
-                            >
-                              {/* Header */}
-                              <View style={styles.modalHeader}>
-                                <Text style={styles.modalHour}>
-                                  {new Date(
-                                    selectedHour.time
-                                  ).toLocaleTimeString("ro-RO", {
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                  })}
-                                </Text>
-                                <View style={styles.weatherIconContainer}>
-                                  <Image
-                                    source={iconSource}
-                                    style={styles.modalIcon}
-                                    resizeMode="contain"
-                                  />
-                                  <Text style={styles.modalCondition}>
-                                    {selectedHour.condition.text}
-                                  </Text>
-                                </View>
-                              </View>
+  return (
+    <Modal
+      animationType="fade"
+      transparent={true}
+      visible={modalVisible}
+      onRequestClose={() => setModalVisible(false)}
+    >
+      <TouchableOpacity
+        style={styles.modalOverlay}
+        activeOpacity={1}
+        onPress={() => setModalVisible(false)}
+      >
+        <TouchableOpacity
+          activeOpacity={1}
+          style={styles.modalContainer}
+        >
+          {/* Header */}
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalHour}>
+              {new Date(selectedHour.time).toLocaleTimeString("ro-RO", {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </Text>
+            <View style={styles.weatherIconContainer}>
+              <Image
+                source={iconSource}
+                style={styles.modalIcon}
+                resizeMode="contain"
+              />
+              <Text style={styles.modalCondition}>
+                {selectedHour.condition.text}
+              </Text>
+            </View>
+          </View>
 
-                              {/* Divider */}
-                              <View style={styles.divider} />
+          {/* Divider */}
+          <View style={styles.divider} />
 
-                              {/* Weather Details */}
-                              <View style={styles.detailsContainer}>
-                                <View style={styles.detailRow}>
-                                  <View style={styles.detailItem}>
-                                    <Feather
-                                      name="thermometer"
-                                      size={20}
-                                      color={Colors.GREEN}
-                                    />
-                                    <Text style={styles.detailLabel}>
-                                      Temperatură
-                                    </Text>
-                                    <Text style={styles.detailValue}>
-                                      {selectedHour.temp_c}°C
-                                    </Text>
-                                  </View>
+          {/* Weather Details */}
+          <View style={styles.detailsContainer}>
+            <View style={styles.detailRow}>
+              <View style={styles.detailItem}>
+                <Feather
+                  name="thermometer"
+                  size={20}
+                  color={Colors.GREEN}
+                />
+                <Text style={styles.detailLabel}>Temperatură</Text>
+                <Text style={styles.detailValue}>{selectedHour.temp_c}°C</Text>
+              </View>
 
-                                  <View style={styles.detailItem}>
-                                    <Feather
-                                      name="wind"
-                                      size={20}
-                                      color={Colors.GREEN}
-                                    />
-                                    <Text style={styles.detailLabel}>Vânt</Text>
-                                    <Text style={styles.detailValue}>
-                                      {selectedHour.wind_kph} km/h
-                                    </Text>
-                                  </View>
-                                </View>
+              <View style={styles.detailItem}>
+                <Feather
+                  name="wind"
+                  size={20}
+                  color={Colors.GREEN}
+                />
+                <Text style={styles.detailLabel}>Vânt</Text>
+                <Text style={styles.detailValue}>{selectedHour.wind_kph} km/h</Text>
+              </View>
+            </View>
 
-                                <View style={styles.detailRow}>
-                                  <View style={styles.detailItem}>
-                                    <Feather
-                                      name="droplet"
-                                      size={20}
-                                      color={Colors.GREEN}
-                                    />
-                                    <Text style={styles.detailLabel}>
-                                      Umiditate
-                                    </Text>
-                                    <Text style={styles.detailValue}>
-                                      {selectedHour.humidity}%
-                                    </Text>
-                                  </View>
+            <View style={styles.detailRow}>
+              <View style={styles.detailItem}>
+                <Feather
+                  name="droplet"
+                  size={20}
+                  color={Colors.GREEN}
+                />
+                <Text style={styles.detailLabel}>Umiditate</Text>
+                <Text style={styles.detailValue}>{selectedHour.humidity}%</Text>
+              </View>
 
-                                  <View style={styles.detailItem}>
-                                    <Feather
-                                      name="compass"
-                                      size={20}
-                                      color={Colors.GREEN}
-                                    />
-                                    <Text style={styles.detailLabel}>
-                                      Direcție
-                                    </Text>
-                                    <Text style={styles.detailValue}>
-                                      {selectedHour.wind_dir}
-                                    </Text>
-                                  </View>
-                                </View>
+              <View style={styles.detailItem}>
+                <Feather
+                  name="compass"
+                  size={20}
+                  color={Colors.GREEN}
+                />
+                <Text style={styles.detailLabel}>Direcție</Text>
+                <Text style={styles.detailValue}>{selectedHour.wind_dir}</Text>
+              </View>
+            </View>
 
-                                <View style={styles.detailRow}>
-                                  <View style={styles.detailItem}>
-                                    <Feather
-                                      name="cloud-rain"
-                                      size={20}
-                                      color={Colors.GREEN}
-                                    />
-                                    <Text style={styles.detailLabel}>
-                                      Precipitații
-                                    </Text>
-                                    <Text style={styles.detailValue}>
-                                      {selectedHour.precip_mm} mm
-                                    </Text>
-                                  </View>
+            <View style={styles.detailRow}>
+              <View style={styles.detailItem}>
+                <Feather
+                  name="cloud-rain"
+                  size={20}
+                  color={Colors.GREEN}
+                />
+                <Text style={styles.detailLabel}>Precipitații</Text>
+                <Text style={styles.detailValue}>{selectedHour.precip_mm} mm</Text>
+              </View>
 
-                                  <View style={styles.detailItem}>
-                                    <Feather
-                                      name="droplet"
-                                      size={20}
-                                      color={Colors.GREEN}
-                                    />
-                                    <Text style={styles.detailLabel}>
-                                      Șanse ploaie
-                                    </Text>
-                                    <Text style={styles.detailValue}>
-                                      {selectedHour.chance_of_rain}%
-                                    </Text>
-                                  </View>
-                                </View>
-                              </View>
+              <View style={styles.detailItem}>
+                <Feather
+                  name="droplet"
+                  size={20}
+                  color={Colors.GREEN}
+                />
+                <Text style={styles.detailLabel}>Șanse ploaie</Text>
+                <Text style={styles.detailValue}>{selectedHour.chance_of_rain}%</Text>
+              </View>
+            </View>
+          </View>
 
-                              {/* Close Button */}
-                              <TouchableOpacity
-                                style={styles.closeButton}
-                                onPress={() => setModalVisible(false)}
-                              >
-                                <Text style={styles.closeButtonText}>
-                                  Închide
-                                </Text>
-                              </TouchableOpacity>
-                            </TouchableOpacity>
-                          </TouchableOpacity>
-                        </Modal>
-                      );
-                    })()}
+          {/* Close Button */}
+          <TouchableOpacity
+            style={styles.closeButton}
+            onPress={() => setModalVisible(false)}
+          >
+            <Text style={styles.closeButtonText}>Închide</Text>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </TouchableOpacity>
+    </Modal>
+  );
+})()}
+
 
                   {/* Weather Stats Grid */}
                   <View style={styles.statsGrid}>
                     {/* Row 1 */}
                     <View style={styles.statItem}>
-                      <Feather
-                        name="wind"
-                        size={24}
-                        color={
-                          current?.temp_c > 10
-                            ? "rgba(24, 24, 24, 0.8)"
-                            : "rgba(244, 240, 240, 0.9)"
-                        }
-                        style={styles.statIcon}
+                      <Image
+                        source={require("../../assets/icons/wind.png")}
+                        style={[
+                          styles.statIcon,
+                          {
+                            tintColor:
+                              current?.temp_c > 10
+                                ? "rgba(24, 24, 24, 0.8)"
+                                : "rgba(244, 240, 240, 0.9)",
+                          },
+                        ]}
                       />
                       <Text style={[styles.statLabel, dynamicStyles.text]}>
-                        Viteză vânt
+                        Wind Speed
                       </Text>
                       <Text style={[styles.statValue, dynamicStyles.text]}>
                         {current?.wind_kph} km/h
@@ -1049,18 +969,20 @@ const WeatherComponent = () => {
                     </View>
 
                     <View style={styles.statItem}>
-                      <Feather
-                        name="droplet"
-                        size={24}
-                        color={
-                          current?.temp_c > 10
-                            ? "rgba(0,0,0,0.8)"
-                            : "rgba(255,255,255,0.9)"
-                        }
-                        style={styles.statIcon}
+                      <Image
+                        source={require("../../assets/icons/drop.png")}
+                        style={[
+                          styles.statIcon,
+                          {
+                            tintColor:
+                              current?.temp_c > 10
+                                ? "rgba(0,0,0,0.8)"
+                                : "rgba(255,255,255,0.9)",
+                          },
+                        ]}
                       />
                       <Text style={[styles.statLabel, dynamicStyles.text]}>
-                        Umiditate
+                        Humidity
                       </Text>
                       <Text style={[styles.statValue, dynamicStyles.text]}>
                         {current?.humidity}%
@@ -1069,18 +991,21 @@ const WeatherComponent = () => {
 
                     {/* Row 2 */}
                     <View style={styles.statItem}>
-                      <Feather
-                        name="sun"
+                      <Image
+                        source={require("../../assets/icons/uv.png")}
+                        style={[
+                          styles.statIcon,
+                          {
+                            tintColor:
+                              current?.temp_c > 10
+                                ? "rgba(0,0,0,0.8)"
+                                : "rgba(255,255,255,0.9)",
+                          },
+                        ]}
                         size={24}
-                        color={
-                          current?.temp_c > 10
-                            ? "rgba(0,0,0,0.8)"
-                            : "rgba(255,255,255,0.9)"
-                        }
-                        style={styles.statIcon}
                       />
                       <Text style={[styles.statLabel, dynamicStyles.text]}>
-                        Index UV{" "}
+                        UV Index
                       </Text>
                       <Text style={[styles.statValue, dynamicStyles.text]}>
                         {weather?.current?.uv}
@@ -1088,18 +1013,21 @@ const WeatherComponent = () => {
                     </View>
 
                     <View style={styles.statItem}>
-                      <Feather
-                        name="cloud"
+                      <Image
+                        source={require("../../assets/icons/cloud.png")}
                         size={24}
-                        color={
-                          current?.temp_c > 10
-                            ? "rgba(0,0,0,0.8)"
-                            : "rgba(255,255,255,0.9)"
-                        }
-                        style={styles.statIcon}
+                        style={[
+                          styles.statIcon,
+                          {
+                            tintColor:
+                              current?.temp_c > 10
+                                ? "rgba(0,0,0,0.8)"
+                                : "rgba(255,255,255,0.9)",
+                          },
+                        ]}
                       />
                       <Text style={[styles.statLabel, dynamicStyles.text]}>
-                        Acoperire nori
+                        Cloud Cover
                       </Text>
                       <Text style={[styles.statValue, dynamicStyles.text]}>
                         {weather?.current?.cloud}%
@@ -1108,18 +1036,20 @@ const WeatherComponent = () => {
 
                     {/* Row 3 */}
                     <View style={styles.statItem}>
-                      <Feather
-                        name="thermometer"
-                        size={24}
-                        color={
-                          current?.temp_c > 10
-                            ? "rgba(0,0,0,0.8)"
-                            : "rgba(255,255,255,0.9)"
-                        }
-                        style={styles.statIcon}
+                      <Image
+                        source={require("../../assets/icons/pressure.png")}
+                        style={[
+                          styles.statIcon,
+                          {
+                            tintColor:
+                              current?.temp_c > 10
+                                ? "rgba(0,0,0,0.8)"
+                                : "rgba(255,255,255,0.9)",
+                          },
+                        ]}
                       />
                       <Text style={[styles.statLabel, dynamicStyles.text]}>
-                        Presiune
+                        Pressure
                       </Text>
                       <Text style={[styles.statValue, dynamicStyles.text]}>
                         {current?.pressure_mb} mb
@@ -1127,18 +1057,21 @@ const WeatherComponent = () => {
                     </View>
 
                     <View style={styles.statItem}>
-                      <Feather
-                        name="cloud-rain"
+                      <Image
+                        source={require("../../assets/icons/snow.png")}
+                        style={[
+                          styles.statIcon,
+                          {
+                            tintColor:
+                              current?.temp_c > 10
+                                ? "rgba(0,0,0,0.8)"
+                                : "rgba(255,255,255,0.9)",
+                          },
+                        ]}
                         size={24}
-                        color={
-                          current?.temp_c > 10
-                            ? "rgba(0,0,0,0.8)"
-                            : "rgba(255,255,255,0.9)"
-                        }
-                        style={styles.statIcon}
                       />
                       <Text style={[styles.statLabel, dynamicStyles.text]}>
-                        Șansă ninsoare
+                        Snow Chance
                       </Text>
                       <Text style={[styles.statValue, dynamicStyles.text]}>
                         {weather?.forecast?.forecastday?.[1]?.day
@@ -1150,18 +1083,20 @@ const WeatherComponent = () => {
                     {/* Sunrise/Sunset */}
                     <View style={[styles.sunTimeContainer]}>
                       <View style={styles.sunTimeItem}>
-                        <Feather
-                          name="sunrise"
-                          size={24}
-                          color={
-                            current?.temp_c > 10
-                              ? "rgba(0,0,0,0.8)"
-                              : "rgba(255,255,255,0.9)"
-                          }
-                          style={styles.statIcon}
+                        <Image
+                          source={require("../../assets/icons/sun.png")}
+                          style={[
+                            styles.statIcon,
+                            {
+                              tintColor:
+                                current?.temp_c > 10
+                                  ? "rgba(0,0,0,0.8)"
+                                  : "rgba(255,255,255,0.9)",
+                            },
+                          ]}
                         />
                         <Text style={[dynamicStyles.text, styles.sunTimeLabel]}>
-                          Răsărit
+                          Sunrise
                         </Text>
                         <Text style={[dynamicStyles.text, styles.sunTimeValue]}>
                           {weather?.forecast?.forecastday[0]?.astro?.sunrise}
@@ -1169,18 +1104,20 @@ const WeatherComponent = () => {
                       </View>
 
                       <View style={styles.sunTimeItem}>
-                        <Feather
-                          name="sunset"
-                          size={24}
-                          color={
-                            current?.temp_c > 10
-                              ? "rgba(0,0,0,0.8)"
-                              : "rgba(255,255,255,0.9)"
-                          }
-                          style={styles.statIcon}
+                        <Image
+                          source={require("../../assets/icons/moon.png")}
+                          style={[
+                            styles.statIcon,
+                            {
+                              tintColor:
+                                current?.temp_c > 10
+                                  ? "rgba(0,0,0,0.8)"
+                                  : "rgba(255,255,255,0.9)",
+                            },
+                          ]}
                         />
                         <Text style={[dynamicStyles.text, styles.sunTimeLabel]}>
-                          Apus
+                          Sunset
                         </Text>
                         <Text style={[dynamicStyles.text, styles.sunTimeValue]}>
                           {weather?.forecast?.forecastday[0]?.astro?.sunset}
@@ -1357,15 +1294,7 @@ const WeatherComponent = () => {
                   />
                 </View>
               ) : (
-                <ScrollView
-                  refreshControl={
-                    <RefreshControl
-                      refreshing={refreshing}
-                      onRefresh={onRefresh}
-                    />
-                  }
-                  style={{ marginHorizontal: 16, marginTop: -40 }}
-                >
+                <ScrollView style={{ marginHorizontal: 16, marginTop: -40 }}>
                   {/* Location Info */}
                   <View
                     style={{
@@ -1383,7 +1312,6 @@ const WeatherComponent = () => {
                             fontSize: 24,
                             fontWeight: "bold",
                             textAlign: "center",
-                            fontFamily: "poppins",
                           },
                           dynamicStyles.text,
                         ]}
@@ -1392,9 +1320,8 @@ const WeatherComponent = () => {
                         <Text
                           style={{
                             fontSize: 18,
-                            fontWeight: "800",
+                            fontWeight: "600",
                             color: "#555",
-                            fontFamily: "poppins",
                           }}
                         >
                           {locationData?.region},{locationData?.country}
@@ -1427,11 +1354,7 @@ const WeatherComponent = () => {
                       <Text
                         style={[
                           dynamicStyles.text,
-                          {
-                            fontSize: 30,
-                            fontWeight: "200",
-                            fontFamily: "poppins",
-                          },
+                          { fontSize: 30, fontWeight: "200" },
                         ]}
                       >
                         Max: {weather?.forecast?.forecastday[1]?.day?.maxtemp_c}
@@ -1459,7 +1382,7 @@ const WeatherComponent = () => {
                   </View>
 
                   {/* Hourly temperatura si precipitatii for TOMORROW */}
-                  <View style={{ marginTop: -25 }}>
+                  <View style={{ marginTop: -5 }}>
                     <Text style={[dynamicStyles.text, styles.sectionTitle]}>
                       Vremea pe ore mâine
                     </Text>
@@ -1662,15 +1585,15 @@ const WeatherComponent = () => {
 
                                   <View style={styles.detailItem}>
                                     <Feather
-                                      name="cloud"
+                                      name="compass"
                                       size={20}
                                       color={Colors.GREEN}
                                     />
                                     <Text style={styles.detailLabel}>
-                                      Acoperire nori
+                                      Direcție
                                     </Text>
                                     <Text style={styles.detailValue}>
-                                      {selectedHour.cloud}%
+                                      {selectedHour.wind_dir}
                                     </Text>
                                   </View>
                                 </View>
@@ -1721,21 +1644,24 @@ const WeatherComponent = () => {
                       );
                     })()}
 
-                  {/* Weather */}
+                  {/* Weather  */}
                   <View style={styles.statsGrid}>
                     {/* Row 1 */}
                     <View style={styles.statItem}>
-                      <Feather
-                        name="wind"
-                        size={24}
-                        color={
-                          current?.temp_c > 10
-                            ? "rgba(0,0,0,0.8)"
-                            : "rgba(255,255,255,0.9)"
-                        }
+                      <Image
+                        source={require("../../assets/icons/wind.png")}
+                        style={[
+                          styles.statIcon,
+                          {
+                            tintColor:
+                              current?.temp_c > 10
+                                ? "rgba(0,0,0,0.8)"
+                                : "rgba(255, 255, 255, 0.9)",
+                          },
+                        ]}
                       />
                       <Text style={[styles.statLabel, dynamicStyles.text]}>
-                        Viteza vântului
+                        Wind Speed
                       </Text>
                       <Text style={[styles.statValue, dynamicStyles.text]}>
                         {weather?.forecast?.forecastday?.[1]?.day.maxwind_kph}{" "}
@@ -1744,14 +1670,17 @@ const WeatherComponent = () => {
                     </View>
 
                     <View style={styles.statItem}>
-                      <Feather
-                        name="droplet"
-                        size={24}
-                        color={
-                          current?.temp_c > 10
-                            ? "rgba(0,0,0,0.8)"
-                            : "rgba(255,255,255,0.9)"
-                        }
+                      <Image
+                        source={require("../../assets/icons/drop.png")}
+                        style={[
+                          styles.statIcon,
+                          {
+                            tintColor:
+                              current?.temp_c > 10
+                                ? "rgba(0,0,0,0.8)"
+                                : "rgba(255,255,255,0.9)",
+                          },
+                        ]}
                       />
                       <Text style={[styles.statLabel, dynamicStyles.text]}>
                         Umiditate
@@ -1763,32 +1692,39 @@ const WeatherComponent = () => {
 
                     {/* Row 2 */}
                     <View style={styles.statItem}>
-                      <Feather
-                        name="sun"
+                      <Image
+                        source={require("../../assets/icons/uv.png")}
+                        style={[
+                          styles.statIcon,
+                          {
+                            tintColor:
+                              current?.temp_c > 10
+                                ? "rgba(0,0,0,0.8)"
+                                : "rgba(255,255,255,0.9)",
+                          },
+                        ]}
                         size={24}
-                        color={
-                          current?.temp_c > 10
-                            ? "rgba(0,0,0,0.8)"
-                            : "rgba(255,255,255,0.9)"
-                        }
                       />
                       <Text style={[styles.statLabel, dynamicStyles.text]}>
                         UV Index
                       </Text>
                       <Text style={[styles.statValue, dynamicStyles.text]}>
-                        {weather?.forecast?.forecastday?.[1]?.day.uv}
+                        {weather?.forecast?.forecastday?.[1]?.day.uv}%
                       </Text>
                     </View>
 
                     <View style={styles.statItem}>
-                      <Feather
-                        name="cloud-rain"
-                        size={24}
-                        color={
-                          current?.temp_c > 10
-                            ? "rgba(0,0,0,0.8)"
-                            : "rgba(255,255,255,0.9)"
-                        }
+                      <Image
+                        source={require("../../assets/icons/rain.png")}
+                        style={[
+                          styles.statIcon,
+                          {
+                            tintColor:
+                              current?.temp_c > 10
+                                ? "rgba(0,0,0,0.8)"
+                                : "rgba(255,255,255,0.9)",
+                          },
+                        ]}
                       />
                       <Text style={[styles.statLabel, dynamicStyles.text]}>
                         Șanse de ploaie
@@ -1804,14 +1740,17 @@ const WeatherComponent = () => {
 
                     {/* Row 3 */}
                     <View style={styles.statItem}>
-                      <Feather
-                        name="thermometer" // folosit ca alternativă pentru presiune
-                        size={24}
-                        color={
-                          current?.temp_c > 10
-                            ? "rgba(0,0,0,0.8)"
-                            : "rgba(255,255,255,0.9)"
-                        }
+                      <Image
+                        source={require("../../assets/icons/pressure.png")}
+                        style={[
+                          styles.statIcon,
+                          {
+                            tintColor:
+                              current?.temp_c > 10
+                                ? "rgba(0,0,0,0.8)"
+                                : "rgba(255,255,255,0.9)",
+                          },
+                        ]}
                       />
                       <Text style={[styles.statLabel, dynamicStyles.text]}>
                         Presiune
@@ -1826,14 +1765,18 @@ const WeatherComponent = () => {
                     </View>
 
                     <View style={styles.statItem}>
-                      <Feather
-                        name="cloud-snow"
+                      <Image
+                        source={require("../../assets/icons/snow.png")}
+                        style={[
+                          styles.statIcon,
+                          {
+                            tintColor:
+                              current?.temp_c > 10
+                                ? "rgba(0,0,0,0.8)"
+                                : "rgba(255,255,255,0.9)",
+                          },
+                        ]}
                         size={24}
-                        color={
-                          current?.temp_c > 10
-                            ? "rgba(0,0,0,0.8)"
-                            : "rgba(255,255,255,0.9)"
-                        }
                       />
                       <Text style={[styles.statLabel, dynamicStyles.text]}>
                         Șanse ninsoare
@@ -1845,20 +1788,23 @@ const WeatherComponent = () => {
                       </Text>
                     </View>
 
-                    {/* Sunrise / Sunset */}
-                    <View style={styles.sunTimeContainer}>
+                    {/* Sunrise/Sunset */}
+                    <View style={[styles.sunTimeContainer]}>
                       <View style={styles.sunTimeItem}>
-                        <Feather
-                          name="sunrise"
-                          size={24}
-                          color={
-                            current?.temp_c > 10
-                              ? "rgba(0,0,0,0.8)"
-                              : "rgba(255,255,255,0.9)"
-                          }
+                        <Image
+                          source={require("../../assets/icons/sun.png")}
+                          style={[
+                            styles.statIcon,
+                            {
+                              tintColor:
+                                current?.temp_c > 10
+                                  ? "rgba(0,0,0,0.8)"
+                                  : "rgba(255,255,255,0.9)",
+                            },
+                          ]}
                         />
                         <Text style={[dynamicStyles.text, styles.sunTimeLabel]}>
-                          Răsărit
+                          Sunrise
                         </Text>
                         <Text style={[dynamicStyles.text, styles.sunTimeValue]}>
                           {weather?.forecast?.forecastday[1]?.astro?.sunrise}
@@ -1866,17 +1812,20 @@ const WeatherComponent = () => {
                       </View>
 
                       <View style={styles.sunTimeItem}>
-                        <Feather
-                          name="sunset"
-                          size={24}
-                          color={
-                            current?.temp_c > 10
-                              ? "rgba(0,0,0,0.8)"
-                              : "rgba(255,255,255,0.9)"
-                          }
+                        <Image
+                          source={require("../../assets/icons/moon.png")}
+                          style={[
+                            styles.statIcon,
+                            {
+                              tintColor:
+                                current?.temp_c > 10
+                                  ? "rgba(0,0,0,0.8)"
+                                  : "rgba(255,255,255,0.9)",
+                            },
+                          ]}
                         />
                         <Text style={[dynamicStyles.text, styles.sunTimeLabel]}>
-                          Apus
+                          Sunset
                         </Text>
                         <Text style={[dynamicStyles.text, styles.sunTimeValue]}>
                           {weather?.forecast?.forecastday[1]?.astro?.sunset}
@@ -1944,15 +1893,7 @@ const WeatherComponent = () => {
                 />
               </View>
             ) : (
-              <ScrollView
-                refreshControl={
-                  <RefreshControl
-                    refreshing={refreshing}
-                    onRefresh={onRefresh}
-                  />
-                }
-                style={styles.forecastContainer}
-              >
+              <ScrollView style={styles.forecastContainer}>
                 {forecast.map((item) => {
                   const date = new Date(item.dt * 1000);
                   const dayName = daysOfWeek[date.getDay()];
@@ -1981,14 +1922,15 @@ const WeatherComponent = () => {
                               {item.temp.min.toFixed(1)}°C
                             </Text>
                             <Text style={[styles.forecastRain]}>
-                              Șanse ploaie: {Math.round(item.pop * 100)}%
+                              Rain: {Math.round(item.pop * 100)}%
                             </Text>
                           </View>
 
                           <Image
-                            source={getLocalWeatherImage(item.weather[0].icon)}
+                            source={{
+                              uri: `https://openweathermap.org/img/wn/${item.weather[0].icon}@2x.png`,
+                            }}
                             style={[styles.forecastIcon]}
-                            resizeMode="contain"
                           />
                         </Card.Content>
                       </Card>
@@ -2036,13 +1978,11 @@ const WeatherComponent = () => {
                     {/* Main Weather Info */}
                     <View style={styles.modalWeatherMain}>
                       <Image
-                        source={getLocalWeatherImage(
-                          selectedForecast.weather[0].icon
-                        )}
+                        source={{
+                          uri: `https://openweathermap.org/img/wn/${selectedForecast.weather[0].icon}@4x.png`,
+                        }}
                         style={styles.modalWeatherIcon}
-                        resizeMode="contain"
                       />
-
                       <View style={styles.modalTextContainer}>
                         <Text style={styles.modalTemp}>
                           {selectedForecast.temp.day.toFixed(1)}°C
@@ -2110,27 +2050,28 @@ const WeatherComponent = () => {
                           {selectedForecast.speed} m/s
                         </Text>
                       </View>
+
                       <View style={styles.detailItem}>
                         <Feather
-                          name="cloud-rain"
+                          name="compass"
+                          size={18}
+                          color={Colors.GREEN}
+                        />
+                        <Text style={styles.detailLabel}>Direcție</Text>
+                        <Text style={styles.detailValue}>
+                          {selectedForecast.deg}°
+                        </Text>
+                      </View>
+
+                      <View style={styles.detailItem}>
+                        <Feather
+                          name="activity"
                           size={18}
                           color={Colors.GREEN}
                         />
                         <Text style={styles.detailLabel}>Șanse ploaie</Text>
                         <Text style={styles.detailValue}>
                           {Math.round(selectedForecast.pop * 100)}%
-                        </Text>
-                      </View>
-
-                      <View style={styles.detailItem}>
-                        <Feather
-                          name="cloud-snow"
-                          size={18}
-                          color={Colors.GREEN}
-                        />
-                        <Text style={styles.detailLabel}>Șanse ninsoare</Text>
-                        <Text style={styles.detailValue}>
-                          {selectedForecast.chance_of_snow ?? 0}%
                         </Text>
                       </View>
 
@@ -2248,7 +2189,7 @@ const styles = StyleSheet.create({
   daySelector: {
     flexDirection: "row",
     justifyContent: "space-around",
-    flex: 1,
+    flex: 1, // ia tot spațiul disponibil
   },
   locationButton: {
     backgroundColor: "rgba(255, 255, 255, 0.2)",
@@ -2257,9 +2198,9 @@ const styles = StyleSheet.create({
     height: 30,
     justifyContent: "center",
     alignItems: "center",
-    marginLeft: 10,
+    marginLeft: 10, // spațiu între butoane și butonul de locație
   },
-
+  // Păstrează restul stilurilor existente...
   dayButton: {
     backgroundColor: "transparent",
     paddingHorizontal: 20,
@@ -2397,14 +2338,12 @@ const styles = StyleSheet.create({
     fontSize: 18,
     letterSpacing: 1,
     marginBottom: 10,
-    fontWeight: "200",
   },
   tempRangeText: {
-    fontSize: 18,
+    fontSize: 16,
     // color: '#aaa',
     fontWeight: "bold",
     marginBottom: 20,
-    fontFamily: "poppins",
   },
   alertContainer: {
     backgroundColor: "rgba(231, 76, 60, 0.2)",
@@ -2505,6 +2444,7 @@ const styles = StyleSheet.create({
   sunTimeValue: {
     // color: '#fff',
     fontSize: 16,
+    fontWeight: "bold",
   },
   sectionTitle: {
     // color: '#fff',
@@ -2512,7 +2452,6 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     marginBottom: 15,
     marginTop: 20,
-    fontFamily: "poppins-bold",
   },
   hourlyContent: {
     flex: 1,
@@ -2755,7 +2694,7 @@ const styles = StyleSheet.create({
   divider: {
     height: 1,
     backgroundColor: "#ECF0F1",
-    marginVertical: 1,
+    marginVertical: 16,
   },
   detailsContainer: {
     marginBottom: 16,

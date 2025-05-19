@@ -65,7 +65,7 @@ export const weatherImages = {
     "Lapoviță în cantităţi mari şi moderate": RainAndSleetMix,
     "Lapoviță de scurtă durată în cantităţi mici": RainAndSleetMix,
     "Lapoviță de scurtă durată în cantităţi mari şi moderate": RainAndSleetMix,
-    "Burniță şi polei pe porţiuni în apropiere": Burnita,
+    "Burniță şi polei pe porţiuni în apropiere": Ceata,
     "Burniță uşoară pe porțiuni": Burnita,
     "Burniță uşoară": Burnita,
     "Burniță înghețată în cantităţi însemnate": Burnita,

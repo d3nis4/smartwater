@@ -2110,27 +2110,28 @@ const WeatherComponent = () => {
                           {selectedForecast.speed} m/s
                         </Text>
                       </View>
+
                       <View style={styles.detailItem}>
                         <Feather
-                          name="cloud-rain"
+                          name="compass"
+                          size={18}
+                          color={Colors.GREEN}
+                        />
+                        <Text style={styles.detailLabel}>Direcție</Text>
+                        <Text style={styles.detailValue}>
+                          {selectedForecast.deg}°
+                        </Text>
+                      </View>
+
+                      <View style={styles.detailItem}>
+                        <Feather
+                          name="activity"
                           size={18}
                           color={Colors.GREEN}
                         />
                         <Text style={styles.detailLabel}>Șanse ploaie</Text>
                         <Text style={styles.detailValue}>
                           {Math.round(selectedForecast.pop * 100)}%
-                        </Text>
-                      </View>
-
-                      <View style={styles.detailItem}>
-                        <Feather
-                          name="cloud-snow"
-                          size={18}
-                          color={Colors.GREEN}
-                        />
-                        <Text style={styles.detailLabel}>Șanse ninsoare</Text>
-                        <Text style={styles.detailValue}>
-                          {selectedForecast.chance_of_snow ?? 0}%
                         </Text>
                       </View>
 
@@ -2755,7 +2756,7 @@ const styles = StyleSheet.create({
   divider: {
     height: 1,
     backgroundColor: "#ECF0F1",
-    marginVertical: 1,
+    marginVertical: 16,
   },
   detailsContainer: {
     marginBottom: 16,
