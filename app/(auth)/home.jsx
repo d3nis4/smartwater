@@ -1,7 +1,8 @@
-import { Ionicons } from "@expo/vector-icons";
 import { Platform } from "react-native";
 import { Alert } from "react-native";
+import { apiKey } from "../../constants";
 import { Colors } from "../../constants/Colors";
+import * as Location from "expo-location";
 import {
   saveToRealtimeDatabase,
   setupRealtimeListener,
@@ -28,13 +29,17 @@ import { getAuth, onAuthStateChanged } from "firebase/auth";
 import { ref, get, set, getDatabase, onValue, update } from "firebase/database";
 import { useNavigation } from "@react-navigation/native";
 import { realtimeDb } from "../../functions/FirebaseConfig";
-
+import { BleManager } from "react-native-ble-plx";
+import { Buffer } from "buffer";
+import { PermissionsAndroid } from "react-native";
+import { Entypo, Ionicons } from "@expo/vector-icons"; // dacă folosești Expo Vector Icons
 const FLASK_SERVER_URL = "https://smartwater-d025f.ew.r.appspot.com";
 
-const Home = () => {
+export default function Home(){
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState(null);
-  const [moisture, setMoisture] = useState(null); 
+  const [moisture, setMoisture] = useState(null);
+  const [rain, setRain] = useState(null);
   const [temperature, setTemperature] = useState(null);
   const [pumpStatus, setPumpStatus] = useState("off");
   const [pumpMode, setPumpMode] = useState("manual");
@@ -46,6 +51,143 @@ const Home = () => {
   const [overrideActive, setOverrideActive] = useState(false);
   const [savedLocation, setSavedLocation] = useState(null);
   const navigation = useNavigation();
+  const [deviceCity, setDeviceCity] = useState("");
+  const [locationCoords, setLocationCoords] = useState(null);
+  const [isVisible, setIsVisible] = useState(false);
+
+  const [suggestions, setSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isLocating, setIsLocating] = useState(false);
+
+  const togglePasswordVisibility = () => {
+    setIsVisible(!isVisible);
+  };
+
+  // const bleManager = new BleManager();
+
+  const [isEspConfigured, setIsEspConfigured] = useState(false);
+  const [wifiName, setWifiName] = useState("");
+  const [wifiPassword, setWifiPassword] = useState("");
+  const [isConnecting, setIsConnecting] = useState(false);
+  const getSafeEmail = (email) =>
+    email ? email.toLowerCase().replace(/\./g, "_").replace(/@/g, "_") : "";
+  const email = user?.email || "";
+  const username = email.split("@")[0];
+  const safeEmail = getSafeEmail(email);
+
+  const requestBluetoothPermissions = async () => {
+    if (Platform.OS === "android" && Platform.Version >= 31) {
+      const granted = await PermissionsAndroid.requestMultiple([
+        PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN,
+        PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT,
+        PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION, // Uneori cerut pentru scanare BLE
+      ]);
+      return Object.values(granted).every((res) => res === "granted");
+    }
+    return true;
+  };
+
+  const handleBluetoothConnect = async () => {
+    try {
+      setIsConnecting(true);
+
+      const hasPermissions = await requestBluetoothPermissions();
+      if (!hasPermissions) {
+        Alert.alert(
+          "Permisiuni necesare",
+          "Bluetooth-ul nu poate fi folosit fără permisiuni."
+        );
+        return;
+      }
+
+      // 1. Scanare dispozitiv
+      let deviceFound = null;
+      const scanTimeout = 10000; // 10 secunde timeout
+
+      await new Promise(async (resolve, reject) => {
+        // Timeout
+        const timeout = setTimeout(() => {
+          bleManager.stopDeviceScan();
+          reject(new Error("Scanare timeout - ESP32 nu a fost găsit"));
+        }, scanTimeout);
+
+        // Scanare
+        await bleManager.startDeviceScan(
+          [SERVICE_UUID],
+          null,
+          (error, device) => {
+            if (error) {
+              clearTimeout(timeout);
+              reject(error);
+              return;
+            }
+
+            if (device?.name?.includes("ESP32")) {
+              bleManager.stopDeviceScan();
+              clearTimeout(timeout);
+              deviceFound = device;
+              resolve();
+            }
+          }
+        );
+      });
+
+      if (!deviceFound) {
+        throw new Error("Dispozitivul nu a fost găsit");
+      }
+
+      // 2. Conectare
+      const connectedDevice = await deviceFound.connect();
+      await connectedDevice.discoverAllServicesAndCharacteristics();
+
+      // 3. Găsire caracteristică
+      const services = await connectedDevice.services();
+      let targetCharacteristic = null;
+
+      for (const service of services) {
+        if (service.uuid.toLowerCase() === SERVICE_UUID.toLowerCase()) {
+          const characteristics = await service.characteristics();
+          targetCharacteristic = characteristics.find(
+            (char) =>
+              char.uuid.toLowerCase() === CHARACTERISTIC_UUID.toLowerCase()
+          );
+          if (targetCharacteristic) break;
+        }
+      }
+
+      if (!targetCharacteristic) {
+        throw new Error("Caracteristica specifică nu a fost găsită");
+      }
+
+      // 4. Pregătire date
+      const dataToSend = JSON.stringify({
+        ssid: wifiName,
+        password: wifiPassword,
+        email: safeEmail,
+      });
+
+      // Convertire la Base64 și apoi la ArrayBuffer
+      const base64Data = Buffer.from(dataToSend).toString("base64");
+      const dataBuffer = Buffer.from(base64Data).toArrayBuffer();
+
+      // 5. Scriere
+      await connectedDevice.writeCharacteristicWithResponseForService(
+        SERVICE_UUID,
+        CHARACTERISTIC_UUID,
+        dataBuffer
+      );
+
+      // 6. Marcam succes
+      setIsEspConfigured(true);
+      Alert.alert("Succes", "Configurația a fost trimisă cu succes!");
+    } catch (error) {
+      console.error("Eroare BLE:", error);
+      Alert.alert("Eroare", error.message || "Eroare la comunicarea cu ESP32");
+    } finally {
+      bleManager.stopDeviceScan(); // Asigură-te că scanarea este oprită
+      setIsConnecting(false);
+    }
+  };
   // Firebase instances
   const auth = getAuth();
   const db = getDatabase();
@@ -131,13 +273,14 @@ const Home = () => {
         // Update sensor data
         setMoisture(data?.soilHumidity ?? null);
         setTemperature(data?.temperature ?? null);
-
+        setRain(data?.rain ?? null);
         // Update control settings
         if (data.controls) {
-          setPumpMode(data.controls.pumpMode || "manual");
+          setPumpMode(data.controls.pumpMode || "Necunoscut");
           setPumpStatus(data.controls.pumpStatus || "off");
           setAutoThreshold(data.controls.pragUmiditate || 30);
           setOverrideActive(data.controls.override || false);
+          setSavedPumpMode(data.controls.pumpMode || "Necunoscut");
         }
 
         // Update schedule
@@ -290,26 +433,26 @@ const Home = () => {
     }
   };
 
-const fetchSavedLocation = async () => {
-  if (!user?.email) return; // 🛑 Nu încerca să accesezi email dacă user e null
+  const fetchSavedLocation = async () => {
+    if (!user?.email) return; // 🛑 Nu încerca să accesezi email dacă user e null
 
-  try {
-    const safeEmail = getSafeEmail(user.email);
-    const db = getDatabase();
-    const locationRef = ref(db, `users/${safeEmail}/location`);
-    const locationSnapshot = await get(locationRef);
+    try {
+      const safeEmail = getSafeEmail(user.email);
+      const db = getDatabase();
+      const locationRef = ref(db, `users/${safeEmail}/location`);
+      const locationSnapshot = await get(locationRef);
 
-    if (locationSnapshot.exists()) {
-      const locationData = locationSnapshot.val();
-      setSavedLocation(locationData);
-    } else {
+      if (locationSnapshot.exists()) {
+        const locationData = locationSnapshot.val();
+        setSavedLocation(locationData);
+      } else {
+        setSavedLocation(null);
+      }
+    } catch (err) {
+      console.error("Eroare la preluarea locației salvate:", err);
       setSavedLocation(null);
     }
-  } catch (err) {
-    console.error("Eroare la preluarea locației salvate:", err);
-    setSavedLocation(null);
-  }
-};
+  };
 
   useEffect(() => {
     if (!user?.email) return;
@@ -521,9 +664,6 @@ const fetchSavedLocation = async () => {
     }
   };
 
-  const getSafeEmail = (email) =>
-    email ? email.toLowerCase().replace(/\./g, "_").replace(/@/g, "_") : "";
-
   useEffect(() => {
     const unsubscribeAuth = auth.onAuthStateChanged((user) => {
       setUser(user);
@@ -541,6 +681,9 @@ const fetchSavedLocation = async () => {
             }
             if (data.temperature !== undefined) {
               setTemperature(data.temperature);
+            }
+            if (data.rain !== undefined) {
+              setRain(data.rain);
             }
 
             // Actualizează controalele
@@ -587,91 +730,107 @@ const fetchSavedLocation = async () => {
     return () => unsubscribeAuth();
   }, []);
 
+  // Helper pentru a converti ora în minute
+  const timeToMinutes = (time) => {
+    const [hours, minutes] = time.split(":").map(Number);
+    return hours * 60 + minutes;
+  };
 
+  const saveSettings = async () => {
+    if (!user?.email) return;
 
-// Helper pentru a converti ora în minute
-const timeToMinutes = (time) => {
-  const [hours, minutes] = time.split(":").map(Number);
-  return hours * 60 + minutes;
-};
+    const days = [
+      "Luni",
+      "Marți",
+      "Miercuri",
+      "Joi",
+      "Vineri",
+      "Sâmbătă",
+      "Duminică",
+    ];
 
-const saveSettings = async () => {
-  if (!user?.email) return;
+    // Validare intervale
+    for (let i = 0; i < schedule.length; i++) {
+      const timeSlots = schedule[i].timeSlots;
 
-  const days = [
-    "Luni", "Marți", "Miercuri", "Joi", "Vineri", "Sâmbătă", "Duminică"
-  ];
+      for (let j = 0; j < timeSlots.length; j++) {
+        const { startTime, endTime } = timeSlots[j];
 
-  // Validare intervale
-  for (let i = 0; i < schedule.length; i++) {
-    const timeSlots = schedule[i].timeSlots;
+        if (!startTime || !endTime) {
+          Alert.alert(
+            "Interval incomplet",
+            `Te rog să completezi toate orele pentru ziua ${days[i]}.`
+          );
+          return;
+        }
 
-    for (let j = 0; j < timeSlots.length; j++) {
-      const { startTime, endTime } = timeSlots[j];
+        const startMinutes = timeToMinutes(startTime);
+        const endMinutes = timeToMinutes(endTime);
 
-      if (!startTime || !endTime) {
-        Alert.alert(
-          "Interval incomplet",
-          `Te rog să completezi toate orele pentru ziua ${days[i]}.`
-        );
-        return;
-      }
+        if (startMinutes >= endMinutes) {
+          Alert.alert(
+            "Interval invalid",
+            `În ziua ${days[i]}, ora de început trebuie să fie înaintea orei de sfârșit.`
+          );
+          return;
+        }
 
-      const startMinutes = timeToMinutes(startTime);
-      const endMinutes = timeToMinutes(endTime);
-
-      if (startMinutes >= endMinutes) {
-        Alert.alert(
-          "Interval invalid",
-          `În ziua ${days[i]}, ora de început trebuie să fie înaintea orei de sfârșit.`
-        );
-        return;
-      }
-
-      if (endMinutes - startMinutes < 2) {
-        Alert.alert(
-          "Interval prea scurt",
-          `Intervalul de irigare din ziua ${days[i]} trebuie să dureze cel puțin 2 minute.`
-        );
-        return;
+        if (endMinutes - startMinutes < 2) {
+          Alert.alert(
+            "Interval prea scurt",
+            `Intervalul de irigare din ziua ${days[i]} trebuie să dureze cel puțin 2 minute.`
+          );
+          return;
+        }
       }
     }
-  }
 
-  try {
-    const safeEmail = getSafeEmail(user.email);
-    const userRef = ref(db, `users/${safeEmail}`);
+    try {
+      const safeEmail = getSafeEmail(user.email);
+      const userRef = ref(db, `users/${safeEmail}`);
 
-    await update(userRef, {
-      controls: {
-        pumpMode,
-        pumpStatus,
-        pragUmiditate: autoThreshold,
-      },
-      program: {
-        Luni: schedule[0].timeSlots.map((slot) => `${slot.startTime}-${slot.endTime}`),
-        Marti: schedule[1].timeSlots.map((slot) => `${slot.startTime}-${slot.endTime}`),
-        Miercuri: schedule[2].timeSlots.map((slot) => `${slot.startTime}-${slot.endTime}`),
-        Joi: schedule[3].timeSlots.map((slot) => `${slot.startTime}-${slot.endTime}`),
-        Vineri: schedule[4].timeSlots.map((slot) => `${slot.startTime}-${slot.endTime}`),
-        Sambata: schedule[5].timeSlots.map((slot) => `${slot.startTime}-${slot.endTime}`),
-        Duminica: schedule[6].timeSlots.map((slot) => `${slot.startTime}-${slot.endTime}`),
-      },
-      lastUpdated: Date.now(),
-    });
+      await update(userRef, {
+        controls: {
+          pumpMode,
+          pumpStatus,
+          pragUmiditate: autoThreshold,
+        },
+        program: {
+          Luni: schedule[0].timeSlots.map(
+            (slot) => `${slot.startTime}-${slot.endTime}`
+          ),
+          Marti: schedule[1].timeSlots.map(
+            (slot) => `${slot.startTime}-${slot.endTime}`
+          ),
+          Miercuri: schedule[2].timeSlots.map(
+            (slot) => `${slot.startTime}-${slot.endTime}`
+          ),
+          Joi: schedule[3].timeSlots.map(
+            (slot) => `${slot.startTime}-${slot.endTime}`
+          ),
+          Vineri: schedule[4].timeSlots.map(
+            (slot) => `${slot.startTime}-${slot.endTime}`
+          ),
+          Sambata: schedule[5].timeSlots.map(
+            (slot) => `${slot.startTime}-${slot.endTime}`
+          ),
+          Duminica: schedule[6].timeSlots.map(
+            (slot) => `${slot.startTime}-${slot.endTime}`
+          ),
+        },
+        lastUpdated: Date.now(),
+      });
 
-    setSavedPumpMode(pumpMode);
-    setSavedAutoThreshold(autoThreshold);
-    setSavedSchedule(schedule);
+      setSavedPumpMode(pumpMode);
+      setSavedAutoThreshold(autoThreshold);
+      setSavedSchedule(schedule);
 
-    Alert.alert("Succes", "Setările au fost salvate cu succes!");
-  } catch (error) {
-    console.error("Eroare la salvarea setărilor:", error);
-    Alert.alert("Eroare", "A apărut o eroare la salvarea setărilor.");
-  }
-};
-
-
+      Alert.alert("Succes", "Setările au fost salvate cu succes!");
+    } catch (error) {
+      console.error("Eroare la salvarea setărilor:", error);
+      Alert.alert("Eroare", "A apărut o eroare la salvarea setărilor.");
+    }
+  };
 
   const toggleDay = (dayIndex) => {
     setScheduledDays((prev) =>
@@ -737,9 +896,6 @@ const saveSettings = async () => {
     };
   }, [user]);
 
-  const email = user?.email || ""; // Folosim operatorul de coalescență pentru a evita erorile dacă user sau email sunt null/undefined
-  const username = email.split("@")[0]; // Împarte email-ul la '@' și ia prima parte
-
   useEffect(() => {
     const unsubscribe = navigation.addListener("focus", () => {
       fetchSavedLocation(); // încarcă din Firebase când Home revine activ
@@ -748,6 +904,98 @@ const saveSettings = async () => {
     return unsubscribe;
   }, [navigation]);
 
+  // --- 1. Funcția pentru a căuta sugestii de orașe pe baza textului introdus ---
+  const fetchLocationSuggestions = async (cityName) => {
+    if (cityName.length < 2) {
+      setSuggestions([]);
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `http://api.weatherapi.com/v1/search.json?key=${apiKey}&q=${cityName}&lang=ro`
+      );
+      const data = await response.json();
+      setSuggestions(data);
+      setShowSuggestions(true);
+    } catch (err) {
+      console.error("Eroare la fetch sugestii:", err);
+    }
+  };
+
+  // --- 2. Funcția pentru a salva locația selectată în Firebase ---
+  const saveDeviceLocation = async () => {
+    try {
+      if (!user?.email || !deviceCity.trim() || !locationCoords) {
+        Alert.alert("Eroare", "Selectează o locație validă din listă.");
+        return;
+      }
+
+      const safeEmail = getSafeEmail(user?.email);
+      const db = getDatabase();
+
+      await set(ref(db, `users/${safeEmail}/location`), {
+        city: deviceCity.trim(),
+        lat: locationCoords.lat,
+        lon: locationCoords.lon,
+      });
+
+      Alert.alert("Succes", "Locația a fost salvată cu succes!");
+      fetchSavedLocation(); // Actualizează locația salvată după salvare
+    } catch (err) {
+      console.error("Eroare la salvarea locației:", err);
+      Alert.alert("Eroare", "Nu s-a putut salva locația.");
+    }
+  };
+
+  // --- 4. Funcția care cere permisiunea de locație și setează locația curentă a dispozitivului ---
+  const handleLocationButtonPress = async () => {
+    setIsLocating(true);
+
+    try {
+      let { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert(
+          "Permisiune refuzată",
+          "Permisiunea pentru locație este necesară."
+        );
+        setIsLocating(false);
+        return;
+      }
+
+      const { coords } = await Location.getCurrentPositionAsync({});
+      const reverseGeocode = await Location.reverseGeocodeAsync({
+        latitude: coords.latitude,
+        longitude: coords.longitude,
+      });
+
+      const cityName =
+        reverseGeocode[0]?.city ||
+        reverseGeocode[0]?.region ||
+        "Locație necunoscută";
+      const country = reverseGeocode[0]?.country || "";
+      const fullCity = `${cityName}, ${country}`;
+
+      setDeviceCity(fullCity);
+      setLocationCoords({ lat: coords.latitude, lon: coords.longitude });
+
+      const safeEmail = getSafeEmail(user?.email);
+      const db = getDatabase();
+
+      await set(ref(db, `users/${safeEmail}/location`), {
+        city: fullCity,
+        lat: coords.latitude,
+        lon: coords.longitude,
+      });
+
+      Alert.alert("Succes", `Locația a fost setată automat: ${fullCity}`);
+    } catch (error) {
+      console.error("Eroare la obținerea locației:", error);
+      Alert.alert("Eroare", "Nu s-a putut obține locația curentă.");
+    } finally {
+      setIsLocating(false);
+    }
+  };
   return (
     <ScrollView style={styles.container}>
       {/* Header Section */}
@@ -773,467 +1021,488 @@ const saveSettings = async () => {
           />
         </View>
       </LinearGradient>
+     
 
-      {/* Dashboard Cards */}
-      <View style={styles.cardsContainer}>
-        {/* Moisture Card */}
-        <View style={[styles.card, styles.moistureCard]}>
-          <View style={styles.cardIcon}>
-            <Fontisto name="blood-drop" size={24} color="#4a90e2" />
+      { (
+        <>
+          {/* Dashboard Cards */}
+          <View style={styles.cardsContainer}>
+            {/* Moisture Card */}
+            <View style={[styles.card, styles.moistureCard]}>
+              <View style={styles.cardIcon}>
+                <Fontisto name="blood-drop" size={24} color="#4a90e2" />
+              </View>
+              <Text style={styles.cardLabel}>Umiditate sol</Text>
+              <Text style={styles.cardValue}>
+                {moisture !== null ? `${moisture}%` : "--"}
+              </Text>
+              <Text style={styles.cardStatus}>
+                {moisture > 60
+                  ? "Optim"
+                  : moisture > 30
+                  ? "Uscat"
+                  : "Foarte uscat"}
+              </Text>
+            </View>
+
+            {/* Temperature Card */}
+            <View style={[styles.card, styles.tempCard]}>
+              <View style={styles.cardIcon}>
+                <Ionicons name="thermometer" size={24} color="#e74c3c" />
+              </View>
+              <Text style={styles.cardLabel}>
+                Temperatură,{"\n"} {rain ? "☀️Senin" : "🌧️Plouă"}
+              </Text>
+              <Text style={styles.cardValue}>
+                {temperature !== null
+                  ? `${
+                      parseFloat(temperature) % 1 === 0
+                        ? temperature + "°C"
+                        : Number(temperature).toFixed(2) + "°C"
+                    }`
+                  : "--"}
+              </Text>
+            </View>
+            <TouchableOpacity
+              onPress={handleRefresh}
+              style={styles.refreshButton}
+            >
+              <Text style={styles.refreshText}>
+                <Feather name="refresh-ccw" size={24} color="black" />
+              </Text>
+            </TouchableOpacity>
           </View>
-          <Text style={styles.cardLabel}>Umiditate sol</Text>
-          <Text style={styles.cardValue}>
-            {moisture !== null ? `${moisture}%` : "--"}
-          </Text>
-          <Text style={styles.cardStatus}>
-            {moisture > 60 ? "Optim" : moisture > 30 ? "Uscat" : "Foarte uscat"}
-          </Text>
-        </View>
 
-        {/* Temperature Card */}
-        <View style={[styles.card, styles.tempCard]}>
-          <View style={styles.cardIcon}>
-            <Ionicons name="thermometer" size={24} color="#e74c3c" />
-          </View>
-          <Text style={styles.cardLabel}>Temperatură</Text>
-          <Text style={styles.cardValue}>
-            {temperature !== null
-              ? `${
-                  parseFloat(temperature) % 1 === 0
-                    ? temperature + "°C"
-                    : Number(temperature).toFixed(2) + "°C"
-                }`
-              : "--"}
-          </Text>
-        </View>
-        <TouchableOpacity onPress={handleRefresh} style={styles.refreshButton}>
-          <Text style={styles.refreshText}>
-            <Feather name="refresh-ccw" size={24} color="black" />
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      {savedPumpMode !== "manual" && pumpData?.pumpStatus === "off" && (
-        <TouchableOpacity
-          onPress={handleOverrideStart}
-          style={{
-            backgroundColor: "#2ecc71", // Verde
-            padding: 12,
-            borderRadius: 10,
-            alignItems: "center",
-            marginHorizontal: 20,
-            marginTop: -10,
-            marginBottom: 10,
-          }}
-        >
-          <Text style={{ color: "white", fontWeight: "bold" }}>
-            Pornește pompa (dezactivează override)
-          </Text>
-        </TouchableOpacity>
-      )}
-
-      {savedPumpMode !== "manual" && pumpData?.pumpStatus === "on" && (
-        <TouchableOpacity
-          onPress={handleOverrideStop}
-          style={{
-            backgroundColor: "#e74c3c", // Roșu
-            padding: 12,
-            borderRadius: 10,
-            alignItems: "center",
-            marginHorizontal: 20,
-            marginTop: -10,
-            marginBottom: 10,
-          }}
-        >
-          <Text style={{ color: "white", fontWeight: "bold" }}>
-            Oprește pompa (override activ)
-          </Text>
-        </TouchableOpacity>
-      )}
-
-      {/* Pump Control Section */}
-      <View style={styles.pumpContainer}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Control pompă de apă</Text>
-          <View
-            style={[
-              styles.pumpStatusIndicator,
-              pumpStatus === "on" ? styles.pumpOn : styles.pumpOff,
-            ]}
-          >
-            <Text style={styles.pumpStatusText}>
-              {pumpStatus === "on" ? "ACTIVĂ" : "INACTIVĂ"}
-            </Text>
-          </View>
-        </View>
-        {/* Selector mod de funcționare */}
-        <View style={styles.modeSelector}>
-          <TouchableOpacity
-            style={[
-              styles.modeButton,
-              pumpMode === "manual" && styles.modeButtonActive,
-            ]}
-            onPress={() => handlePumpModeChange("manual")}
-          >
-            <Ionicons
-              name="hand-right"
-              size={16} // Dimensiune mai mică pentru iconiță
-              color={pumpMode === "manual" ? "#fff" : Colors.GREEN}
-            />
-            <Text
-              style={[
-                styles.modeButtonText,
-                pumpMode === "manual" && styles.modeButtonTextActive,
-              ]}
+          {savedPumpMode !== "manual" && pumpData?.pumpStatus === "off" && (
+            <TouchableOpacity
+              onPress={handleOverrideStart}
+              style={{
+                backgroundColor: "#2ecc71", // Verde
+                padding: 12,
+                borderRadius: 10,
+                alignItems: "center",
+                marginHorizontal: 20,
+                marginTop: -10,
+                marginBottom: 10,
+              }}
             >
-              Manual
-            </Text>
-          </TouchableOpacity>
+              <Text style={{ color: "white", fontWeight: "bold" }}>
+                Pornește pompa
+              </Text>
+            </TouchableOpacity>
+          )}
 
-          <TouchableOpacity
-            style={[
-              styles.modeButton,
-              pumpMode === "auto" && styles.modeButtonActive,
-            ]}
-            onPress={() => handlePumpModeChange("auto")}
-          >
-            <Ionicons
-              name="settings"
-              size={16} // Dimensiune mai mică pentru iconiță
-              color={pumpMode === "auto" ? "#fff" : Colors.GREEN}
-            />
-            <Text
-              style={[
-                styles.modeButtonText,
-                pumpMode === "auto" && styles.modeButtonTextActive,
-              ]}
+          {savedPumpMode !== "manual" && pumpData?.pumpStatus === "on" && (
+            <TouchableOpacity
+              onPress={handleOverrideStop}
+              style={{
+                backgroundColor: "#e74c3c", // Roșu
+                padding: 12,
+                borderRadius: 10,
+                alignItems: "center",
+                marginHorizontal: 20,
+                marginTop: -10,
+                marginBottom: 10,
+              }}
             >
-              Automat
-            </Text>
-          </TouchableOpacity>
+              <Text style={{ color: "white", fontWeight: "bold" }}>
+                Oprește pompa
+              </Text>
+            </TouchableOpacity>
+          )}
 
-          <TouchableOpacity
-            style={[
-              styles.modeButton,
-              pumpMode === "smart" && styles.modeButtonActive,
-            ]}
-            onPress={() => {
-              if (savedLocation) {
-                handlePumpModeChange("smart");
-              } else {
-                Alert.alert(
-                  "Locație nesetată",
-                  "Te rugăm să setezi o locație în setări pentru a activa modul Smart."
-                );
-              }
-            }}
-          >
-            <Ionicons
-              name="settings"
-              size={16} // Dimensiune mai mică pentru iconiță
-              color={pumpMode === "smart" ? "#fff" : Colors.GREEN}
-            />
-            <Text
-              style={[
-                styles.modeButtonText,
-                pumpMode === "smart" && styles.modeButtonTextActive,
-              ]}
-            >
-              Smart
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[
-              styles.modeButton,
-              pumpMode === "scheduled" && styles.modeButtonActive,
-            ]}
-            onPress={() => handlePumpModeChange("scheduled")}
-          >
-            <Ionicons
-              name="calendar"
-              size={16} // Dimensiune mai mică pentru iconiță
-              color={pumpMode === "scheduled" ? "#fff" : Colors.GREEN}
-            />
-            <Text
-              style={[
-                styles.modeButtonText,
-                pumpMode === "scheduled" && styles.modeButtonTextActive,
-              ]}
-            >
-              Programat
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Conținut în funcție de modul selectat */}
-        {pumpMode === "manual" && (
-          <View style={styles.pumpStatusContainer}>
-            <View style={styles.pumpButtons}>
-              <TouchableOpacity
-                style={[styles.pumpButton, styles.pumpOnButton]}
-                onPress={handlePumpStart}
+          {/* Pump Control Section */}
+          <View style={styles.pumpContainer}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Control pompă de apă</Text>
+              <View
+                style={[
+                  styles.pumpStatusIndicator,
+                  pumpStatus === "on" ? styles.pumpOn : styles.pumpOff,
+                ]}
               >
-                <Text style={styles.buttonText}>Pornire</Text>
+                <Text style={styles.pumpStatusText}>
+                  {pumpStatus === "on" ? "ACTIVĂ" : "INACTIVĂ"}
+                </Text>
+              </View>
+            </View>
+            {/* Selector mod de funcționare */}
+            <View style={styles.modeSelector}>
+              <TouchableOpacity
+                style={[
+                  styles.modeButton,
+                  pumpMode === "manual" && styles.modeButtonActive,
+                ]}
+                onPress={() => handlePumpModeChange("manual")}
+              >
+                <Ionicons
+                  name="hand-right"
+                  size={16} // Dimensiune mai mică pentru iconiță
+                  color={pumpMode === "manual" ? "#fff" : Colors.GREEN}
+                />
+                <Text
+                  style={[
+                    styles.modeButtonText,
+                    pumpMode === "manual" && styles.modeButtonTextActive,
+                  ]}
+                >
+                  Manual
+                </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.pumpButton, styles.pumpOffButton]}
-                onPress={handlePumpStop}
+                style={[
+                  styles.modeButton,
+                  pumpMode === "auto" && styles.modeButtonActive,
+                ]}
+                onPress={() => handlePumpModeChange("auto")}
               >
-                <Text style={styles.buttonText}>Oprire</Text>
+                <Ionicons
+                  name="settings"
+                  size={16} // Dimensiune mai mică pentru iconiță
+                  color={pumpMode === "auto" ? "#fff" : Colors.GREEN}
+                />
+                <Text
+                  style={[
+                    styles.modeButtonText,
+                    pumpMode === "auto" && styles.modeButtonTextActive,
+                  ]}
+                >
+                  Automat
+                </Text>
               </TouchableOpacity>
-            </View>
-          </View>
-        )}
 
-        {pumpMode === "auto" && (
-          <View style={styles.autoModeContainer}>
-            <Text style={styles.autoModeText}>Pompa va funcționa automat</Text>
-            <View style={styles.thresholdControl}>
-              <Text style={styles.thresholdLabel}>Prag umiditate:</Text>
-              <Slider
-                value={autoThreshold}
-                onValueChange={setAutoThreshold}
-                minimumValue={10}
-                maximumValue={90}
-                step={5}
-                minimumTrackTintColor="#4a90e2"
-                maximumTrackTintColor="#d3d3d3"
-                thumbTintColor="#4a90e2"
-              />
-              <Text style={styles.thresholdValue}>{autoThreshold}%</Text>
-            </View>
-          </View>
-        )}
-
-        {pumpMode === "smart" && (
-          <View style={styles.autoModeContainer}>
-            <Text style={styles.autoModeText}>
-              Pompa va funcționa automat în funcție de parametrii de mediu:
-              prognoza meteo, temperatura, umiditate
-            </Text>
-
-            <View style={styles.thresholdControl}>
-              {savedLocation && (
-                <Text style={styles.locationText}>
-                  Locație setată: {savedLocation.city}
-                </Text>
-              )}
-
-              {overrideActive && (
-                <Text style={styles.smartWarning}>
-                  Override activ - controlul smart este suspendat
-                </Text>
-              )}
-            </View>
-          </View>
-        )}
-
-        {pumpMode === "scheduled" && (
-          <View style={styles.scheduleContainer}>
-            <Text style={styles.sectionSubtitle}>Selectați zilele:</Text>
-            <View style={styles.daysSelector}>
-              {[
-                "Luni",
-                "Marți",
-                "Miercuri",
-                "Joi",
-                "Vineri",
-                "Sâmbătă",
-                "Duminică",
-              ].map((day, index) => {
-                // Verifică dacă există intervale programate pentru acea zi
-                const hasSchedule = schedule[index].timeSlots.length > 0;
-
-                return (
-                  <TouchableOpacity
-                    key={index}
-                    style={[
-                      styles.dayButton,
-                      hasSchedule && styles.dayButtonActive,
-                    ]}
-                    onPress={() => toggleDay(index)}
-                  >
-                    <Text
-                      style={[
-                        styles.dayButtonText,
-                        hasSchedule && styles.dayButtonTextActive,
-                      ]}
-                    >
-                      {day.charAt(0)} {/* Afișează prima literă a zilei */}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-
-            <Text style={styles.sectionSubtitle}>Programează orele:</Text>
-            {scheduledDays.map((dayIndex) => (
-              <View key={dayIndex} style={styles.dayScheduleContainer}>
-                <Text style={styles.dayTitle}>
-                  {
-                    [
-                      "Luni",
-                      "Marți",
-                      "Miercuri",
-                      "Joi",
-                      "Vineri",
-                      "Sâmbătă",
-                      "Duminică",
-                    ][dayIndex]
+              <TouchableOpacity
+                style={[
+                  styles.modeButton,
+                  pumpMode === "smart" && styles.modeButtonActive,
+                ]}
+                onPress={() => {
+                  if (savedLocation) {
+                    handlePumpModeChange("smart");
+                  } else {
+                    Alert.alert(
+                      "Locație nesetată",
+                      "Te rugăm să setezi o locație în setări pentru a activa modul Smart."
+                    );
                   }
+                }}
+              >
+                <Ionicons
+                  name="settings"
+                  size={16} // Dimensiune mai mică pentru iconiță
+                  color={pumpMode === "smart" ? "#fff" : Colors.GREEN}
+                />
+                <Text
+                  style={[
+                    styles.modeButtonText,
+                    pumpMode === "smart" && styles.modeButtonTextActive,
+                  ]}
+                >
+                  Smart
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.modeButton,
+                  pumpMode === "scheduled" && styles.modeButtonActive,
+                ]}
+                onPress={() => handlePumpModeChange("scheduled")}
+              >
+                <Ionicons
+                  name="calendar"
+                  size={16} // Dimensiune mai mică pentru iconiță
+                  color={pumpMode === "scheduled" ? "#fff" : Colors.GREEN}
+                />
+                <Text
+                  style={[
+                    styles.modeButtonText,
+                    pumpMode === "scheduled" && styles.modeButtonTextActive,
+                  ]}
+                >
+                  Programat
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Conținut în funcție de modul selectat */}
+            {pumpMode === "manual" && (
+              <View style={styles.pumpStatusContainer}>
+                <View style={styles.pumpButtons}>
+                  <TouchableOpacity
+                    style={[styles.pumpButton, styles.pumpOnButton]}
+                    onPress={handlePumpStart}
+                  >
+                    <Text style={styles.buttonText}>Pornire</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[styles.pumpButton, styles.pumpOffButton]}
+                    onPress={handlePumpStop}
+                  >
+                    <Text style={styles.buttonText}>Oprire</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+
+            {pumpMode === "auto" && (
+              <View style={styles.autoModeContainer}>
+                <Text style={styles.activityTitle}>
+                  Pompa va funcționa automat
+                </Text>
+                <View style={styles.thresholdControl}>
+                  <Text style={styles.autoModeText}>
+                    Prag umiditate setat:{savedAutoThreshold}
+                  </Text>
+                  <Slider
+                    value={autoThreshold}
+                    onValueChange={setAutoThreshold}
+                    minimumValue={10}
+                    maximumValue={90}
+                    step={5}
+                    minimumTrackTintColor="#4a90e2"
+                    maximumTrackTintColor="#d3d3d3"
+                    thumbTintColor="#4a90e2"
+                  />
+                  <Text style={styles.thresholdValue}>{autoThreshold}%</Text>
+                </View>
+              </View>
+            )}
+
+            {pumpMode === "smart" && (
+              <View style={styles.autoModeContainer}>
+                <Text style={styles.autoModeText}>
+                  Pompa va funcționa automat în funcție de parametrii de mediu:
+                  prognoza meteo, temperatura, umiditate
                 </Text>
 
-                {schedule[dayIndex].timeSlots.map((slot, slotIndex) => (
-                  <View key={slotIndex} style={styles.timeSlotContainer}>
-                    <TouchableOpacity
-                      style={styles.timeInput}
-                      onPress={() =>
-                        showTimePicker(dayIndex, slotIndex, "startTime")
-                      }
-                    >
-                      <Text>{slot.startTime || "HH:MM"}</Text>
-                    </TouchableOpacity>
+                <View style={styles.thresholdControl}>
+                  {savedLocation && (
+                    <Text style={styles.locationText}>
+                      Locație setată: {savedLocation.city}
+                    </Text>
+                  )}
 
-                    <TouchableOpacity
-                      style={styles.timeInput}
-                      onPress={() =>
-                        showTimePicker(dayIndex, slotIndex, "endTime")
-                      }
-                    >
-                      <Text>{slot.endTime || "HH:MM"}</Text>
-                    </TouchableOpacity>
+                  {overrideActive && (
+                    <Text style={styles.smartWarning}>
+                      Override activ - controlul smart este suspendat
+                    </Text>
+                  )}
+                </View>
+              </View>
+            )}
 
-                    <TouchableOpacity
-                      style={styles.removeTimeButton}
-                      onPress={() => removeTimeSlot(dayIndex, slotIndex)}
-                    >
-                      <Ionicons name="close" size={20} color="#e74c3c" />
-                    </TouchableOpacity>
+            {pumpMode === "scheduled" && (
+              <View style={styles.scheduleContainer}>
+                <Text style={styles.sectionSubtitle}>Selectați zilele:</Text>
+                <View style={styles.daysSelector}>
+                  {[
+                    "Luni",
+                    "Marți",
+                    "Miercuri",
+                    "Joi",
+                    "Vineri",
+                    "Sâmbătă",
+                    "Duminică",
+                  ].map((day, index) => {
+                    // Verifică dacă există intervale programate pentru acea zi
+                    const hasSchedule = schedule[index].timeSlots.length > 0;
+
+                    return (
+                      <TouchableOpacity
+                        key={index}
+                        style={[
+                          styles.dayButton,
+                          hasSchedule && styles.dayButtonActive,
+                        ]}
+                        onPress={() => toggleDay(index)}
+                      >
+                        <Text
+                          style={[
+                            styles.dayButtonText,
+                            hasSchedule && styles.dayButtonTextActive,
+                          ]}
+                        >
+                          {day.charAt(0)} {/* Afișează prima literă a zilei */}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+
+                <Text style={styles.sectionSubtitle}>Programează orele:</Text>
+                {scheduledDays.map((dayIndex) => (
+                  <View key={dayIndex} style={styles.dayScheduleContainer}>
+                    <Text style={styles.dayTitle}>
+                      {
+                        [
+                          "Luni",
+                          "Marți",
+                          "Miercuri",
+                          "Joi",
+                          "Vineri",
+                          "Sâmbătă",
+                          "Duminică",
+                        ][dayIndex]
+                      }
+                    </Text>
+
+                    {schedule[dayIndex].timeSlots.map((slot, slotIndex) => (
+                      <View key={slotIndex} style={styles.timeSlotContainer}>
+                        <TouchableOpacity
+                          style={styles.timeInput}
+                          onPress={() =>
+                            showTimePicker(dayIndex, slotIndex, "startTime")
+                          }
+                        >
+                          <Text>{slot.startTime || "HH:MM"}</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          style={styles.timeInput}
+                          onPress={() =>
+                            showTimePicker(dayIndex, slotIndex, "endTime")
+                          }
+                        >
+                          <Text>{slot.endTime || "HH:MM"}</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          style={styles.removeTimeButton}
+                          onPress={() => removeTimeSlot(dayIndex, slotIndex)}
+                        >
+                          <Ionicons name="close" size={20} color="#e74c3c" />
+                        </TouchableOpacity>
+                      </View>
+                    ))}
+                    {pickerVisible && (
+                      <DateTimePicker
+                        value={new Date()}
+                        mode="time"
+                        is24Hour={true}
+                        display={Platform.OS === "ios" ? "spinner" : "default"}
+                        onChange={onTimeSelected}
+                      />
+                    )}
+
+                    {schedule[dayIndex].timeSlots.length < 3 && (
+                      <TouchableOpacity
+                        style={styles.addTimeButton}
+                        onPress={() => addTimeSlot(dayIndex)}
+                      >
+                        <Ionicons name="add" size={20} color="#4a90e2" />
+                        <Text style={styles.addTimeText}>Adaugă interval</Text>
+                      </TouchableOpacity>
+                    )}
                   </View>
                 ))}
-                {pickerVisible && (
-                  <DateTimePicker
-                    value={new Date()}
-                    mode="time"
-                    is24Hour={true}
-                    display={Platform.OS === "ios" ? "spinner" : "default"}
-                    onChange={onTimeSelected}
-                  />
-                )}
-
-                {schedule[dayIndex].timeSlots.length < 3 && (
-                  <TouchableOpacity
-                    style={styles.addTimeButton}
-                    onPress={() => addTimeSlot(dayIndex)}
-                  >
-                    <Ionicons name="add" size={20} color="#4a90e2" />
-                    <Text style={styles.addTimeText}>Adaugă interval</Text>
-                  </TouchableOpacity>
-                )}
               </View>
-            ))}
-          </View>
-        )}
+            )}
 
-        {/* Butonul de save */}
-        <View style={styles.saveButtonContainer}>
-          <TouchableOpacity style={styles.saveButton} onPress={saveSettings}>
-            <Text style={styles.saveButtonText}>Salvează modificările</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* Recent Activity */}
-      <View style={styles.activityContainer}>
-        <Text style={styles.sectionTitle}>Setări Sistem Irigare</Text>
-
-        <View style={styles.activityItem}>
-          <View style={styles.activityIcon}>
-            <Ionicons name="settings" size={20} color="#2ecc71" />
-          </View>
-          <View style={styles.activityText}>
-            <Text style={styles.activityTitle}>Mod pompa</Text>
-            <Text style={styles.activityTime}>
-              {savedPumpMode === "manual"
-                ? "Manual"
-                : savedPumpMode === "auto"
-                ? "Automat"
-                : savedPumpMode === "smart"
-                ? "Smart"
-                : savedPumpMode === "scheduled"
-                ? "Programat"
-                : "Necunoscut"}
-            </Text>
-          </View>
-        </View>
-
-        {savedPumpMode === "auto" && (
-          <View style={styles.activityItem}>
-            <View style={styles.activityIcon}>
-              <Ionicons name="water" size={20} color="#3498db" />
-            </View>
-            <View style={styles.activityText}>
-              <Text style={styles.activityTitle}>Prag umiditate</Text>
-              <Text style={styles.activityTime}>{savedAutoThreshold}%</Text>
+            {/* Butonul de save */}
+            <View style={styles.saveButtonContainer}>
+              <TouchableOpacity
+                style={styles.saveButton}
+                onPress={saveSettings}
+              >
+                <Text style={styles.saveButtonText}>Salvează modificările</Text>
+              </TouchableOpacity>
             </View>
           </View>
-        )}
 
-        {/* Status actual pompa */}
-        <View style={styles.activityItem}>
-          <View style={styles.activityIcon}>
-            <Ionicons name="flash" size={20} color="#f1c40f" />
-          </View>
-          <View style={styles.activityText}>
-            <Text style={styles.activityTitle}>Status pompa</Text>
-            <Text style={styles.activityTime}>
-              {pumpStatus === "on" ? "Activă" : "Inactivă"}
-            </Text>
-          </View>
-        </View>
+          {/* Recent Activity */}
+          <View style={styles.activityContainer}>
+            <Text style={styles.sectionTitle}>Setări Sistem Irigare</Text>
 
-        {/* Ore programate (dacă e mod programat) */}
-        {savedPumpMode === "scheduled" && (
-          <>
-            {savedSchedule.map((day, index) => {
-              const dayName = [
-                "Luni",
-                "Marți",
-                "Miercuri",
-                "Joi",
-                "Vineri",
-                "Sâmbătă",
-                "Duminică",
-              ][index];
-              const intervals = day.timeSlots
-                .filter((slot) => slot.startTime && slot.endTime)
-                .map((slot) => `${slot.startTime}-${slot.endTime}`)
-                .join(", ");
+            <View style={styles.activityItem}>
+              <View style={styles.activityIcon}>
+                <Ionicons name="settings" size={20} color="#2ecc71" />
+              </View>
+              <View style={styles.activityText}>
+                <Text style={styles.activityTitle}>Mod pompa</Text>
+                <Text style={styles.activityTime}>
+                  {savedPumpMode === "manual"
+                    ? "Manual"
+                    : savedPumpMode === "auto"
+                    ? "Automat"
+                    : savedPumpMode === "smart"
+                    ? "Smart"
+                    : savedPumpMode === "scheduled"
+                    ? "Programat"
+                    : "Necunoscut"}
+                </Text>
+              </View>
+            </View>
 
-              if (!intervals) return null;
-
-              return (
-                <View key={index} style={styles.activityItem}>
-                  <View style={styles.activityIcon}>
-                    <Ionicons name="calendar" size={20} color="#9b59b6" />
-                  </View>
-                  <View style={styles.activityText}>
-                    <Text style={styles.activityTitle}>{dayName}</Text>
-                    <Text style={styles.activityTime}>{intervals}</Text>
-                  </View>
+            {savedPumpMode === "auto" && (
+              <View style={styles.activityItem}>
+                <View style={styles.activityIcon}>
+                  <Ionicons name="water" size={20} color="#3498db" />
                 </View>
-              );
-            })}
-          </>
-        )}
-      </View>
+                <View style={styles.activityText}>
+                  <Text style={styles.activityTitle}>Prag umiditate</Text>
+                  <Text style={styles.activityTime}>{savedAutoThreshold}%</Text>
+                </View>
+              </View>
+            )}
+
+            {/* Status actual pompa */}
+            <View style={styles.activityItem}>
+              <View style={styles.activityIcon}>
+                <Ionicons name="flash" size={20} color="#f1c40f" />
+              </View>
+              <View style={styles.activityText}>
+                <Text style={styles.activityTitle}>Status pompa</Text>
+                <Text style={styles.activityTime}>
+                  {pumpStatus === "on" ? "Activă" : "Inactivă"}
+                </Text>
+              </View>
+            </View>
+
+            {/* Ore programate (dacă e mod programat) */}
+            {savedPumpMode === "scheduled" && (
+              <>
+                {savedSchedule.map((day, index) => {
+                  const dayName = [
+                    "Luni",
+                    "Marți",
+                    "Miercuri",
+                    "Joi",
+                    "Vineri",
+                    "Sâmbătă",
+                    "Duminică",
+                  ][index];
+                  const intervals = day.timeSlots
+                    .filter((slot) => slot.startTime && slot.endTime)
+                    .map((slot) => `${slot.startTime}-${slot.endTime}`)
+                    .join(", ");
+
+                  if (!intervals) return null;
+
+                  return (
+                    <View key={index} style={styles.activityItem}>
+                      <View style={styles.activityIcon}>
+                        <Ionicons name="calendar" size={20} color="#9b59b6" />
+                      </View>
+                      <View style={styles.activityText}>
+                        <Text style={styles.activityTitle}>{dayName}</Text>
+                        <Text style={styles.activityTime}>{intervals}</Text>
+                      </View>
+                    </View>
+                  );
+                })}
+              </>
+            )}
+          </View>
+        </>
+      )}
     </ScrollView>
   );
 };
 
-export default Home;
+
 
 const styles = StyleSheet.create({
   container: {
@@ -1241,15 +1510,16 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.PRIMARY,
   },
   header: {
-    padding: 25,
-    paddingTop: 40,
-    borderBottomLeftRadius: 25,
-    borderBottomRightRadius: 25,
+    padding: 20,
+    paddingTop: 5,
+    borderBottomLeftRadius: 80,
+    borderBottomRightRadius: 80,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 1, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 10,
     elevation: 5,
+    marginBottom: 10,
   },
   headerContent: {
     marginBottom: 15,
@@ -1301,7 +1571,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     paddingHorizontal: 20,
-    marginTop: -30,
+    marginTop:1,
     marginBottom: 20,
   },
   card: {
@@ -1411,7 +1681,7 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     fontFamily: "poppins-bold",
-    color: "#fff",
+    color: Colors.WHITE,
     fontSize: 14,
   },
   activityContainer: {
@@ -1734,5 +2004,65 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(231, 77, 60, 0.19)",
     textAlign: "center",
+  },
+  configContainer: {
+    flex: 1,
+    padding: 20,
+    backgroundColor: Colors.PRIMARY,
+  },
+  configTitle: {
+    fontSize: 24,
+    fontFamily: "poppins-bold",
+    color: Colors.DARKGREEN,
+    marginBottom: 4,
+    textAlign: "center",
+  },
+  configSubtitle: {
+    fontSize: 16,
+    fontFamily: "poppins",
+    color: Colors.GRAY,
+    marginBottom: 20,
+    textAlign: "center",
+  },
+  inputGroup: {
+    marginBottom: 10,
+  },
+  underlineContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.GRAY,
+    paddingBottom: 5,
+  },
+  inputField: {
+    fontFamily: "poppins",
+    fontSize: 16,
+    padding: 5,
+    color: "#000",
+    flex: 1,
+  },
+  emailContainer: {
+    marginBottom: 35,
+    paddingHorizontal: 5,
+  },
+  emailText: {
+    fontFamily: "poppins",
+    fontSize: 16,
+    color: Colors.GRAY,
+  },
+  emailHighlight: {
+    color: Colors.DARKGREEN,
+    fontWeight: "bold",
+  },
+  button: {
+    backgroundColor: Colors.GREEN,
+    padding: 15,
+    borderRadius: 25,
+    alignItems: "center",
+    justifyContent: "center",
+    height: 50,
+  },
+  buttonDisabled: {
+    backgroundColor: Colors.GRAY,
   },
 });

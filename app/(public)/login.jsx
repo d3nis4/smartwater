@@ -4,7 +4,7 @@ import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../../functions/FirebaseConfig';
 import Spinner from 'react-native-loading-spinner-overlay';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { Colors } from '../constants/Colors';
+import { Colors } from '../../constants/Colors';
 import { Link } from 'expo-router';
 import { Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -58,7 +58,8 @@ const Login = () => {
       await signInWithEmailAndPassword(auth, emailAddress, password);
       setLoading(false);
       setError('');
-      router.push('/home'); 
+        console.log('Router object:', router);
+      router.push('/register');
       alert('Te-ai autentificat cu succes!');
     } catch (err) {
       setLoading(false);
@@ -67,7 +68,11 @@ const Login = () => {
         setError('Nu există un cont cu acest email.');
       } else if (err.code === 'auth/wrong-password') {
         setError('Parola este incorectă.');
-      } else {
+      } else if (err.code === 'auth/invalid-credential') {
+  setError('Datele de autentificare nu sunt valide.');
+}
+
+       else {
         setError('A apărut o eroare, te rugăm să încerci din nou.');
       }
     }

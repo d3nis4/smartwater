@@ -1,7 +1,0 @@
-runtime: python39
-entrypoint: gunicorn -b :$PORT server:app
-
-env_variables:
-  WEATHER_API_KEY: "cheia_ta"
-  FIREBASE_URL: "https://smartwater-d025f-default-rtdb.europe-west1.firebasedatabase.app"
-  WEATHER_API_URL: "urlul_tau_weather_api"

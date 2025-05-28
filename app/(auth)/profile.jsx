@@ -15,17 +15,18 @@ import {
 import React, { useEffect, useState } from "react";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
-import { Colors } from "../constants/Colors";
+import { Colors } from "../../constants/Colors";
 import { useAuth } from "../../functions/index";
 import { getDatabase, ref, set, get } from "firebase/database"; // Importăm `get` pentru a citi datele
 import { apiKey } from "../../constants";
-import * as Location from "expo-location";
+import * as Location from "expo-location"; 
 import { Entypo } from "@expo/vector-icons";
+
 
 export default function Profile() {
   const router = useRouter();
   const { currentUser, signOut } = useAuth();
-  const [isLocating, setIsLocating] = useState(false);  
+  const [isLocating, setIsLocating] = useState(false);
   const [photoUrl, setPhotoUrl] = useState(
     "https://ui-avatars.com/api/?name=User"
   );
@@ -125,7 +126,7 @@ export default function Profile() {
   const onSignOutPress = async () => {
     try {
       await signOut();
-      router.replace("/login");
+      router.replace("/");
     } catch (error) {
       console.error("Eroare la deconectare:", error);
     }
@@ -141,46 +142,52 @@ export default function Profile() {
 
   const username = email ? email.split("@")[0] : "Utilizator";
 
-const handleLocationButtonPress = async () => {
-  setIsLocating(true); // Activează indicatorul
-  
-  try {
-    let { status } = await Location.requestForegroundPermissionsAsync();
-    if (status !== "granted") {
-      Alert.alert("Permisiune refuzată", "Permisiunea pentru locație este necesară.");
-      return;
+  const handleLocationButtonPress = async () => {
+    setIsLocating(true); // Activează indicatorul
+
+    try {
+      let { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert(
+          "Permisiune refuzată",
+          "Permisiunea pentru locație este necesară."
+        );
+        return;
+      }
+
+      const { coords } = await Location.getCurrentPositionAsync({});
+      const reverseGeocode = await Location.reverseGeocodeAsync({
+        latitude: coords.latitude,
+        longitude: coords.longitude,
+      });
+
+      const cityName =
+        reverseGeocode[0]?.city ||
+        reverseGeocode[0]?.region ||
+        "Locație necunoscută";
+      const country = reverseGeocode[0]?.country || "";
+      const fullCity = `${cityName}, ${country}`;
+
+      setDeviceCity(fullCity);
+      setLocationCoords({ lat: coords.latitude, lon: coords.longitude });
+
+      const safeEmail = getSafeEmail(currentUser.email);
+      const db = getDatabase();
+
+      await set(ref(db, `users/${safeEmail}/location`), {
+        city: fullCity,
+        lat: coords.latitude,
+        lon: coords.longitude,
+      });
+
+      Alert.alert("Succes", `Locația a fost setată automat: ${fullCity}`);
+    } catch (error) {
+      console.error("Eroare la obținerea locației:", error);
+      Alert.alert("Eroare", "Nu s-a putut obține locația curentă.");
+    } finally {
+      setIsLocating(false); // Dezactivează indicatorul
     }
-
-    const { coords } = await Location.getCurrentPositionAsync({});
-    const reverseGeocode = await Location.reverseGeocodeAsync({
-      latitude: coords.latitude,
-      longitude: coords.longitude,
-    });
-
-    const cityName = reverseGeocode[0]?.city || reverseGeocode[0]?.region || "Locație necunoscută";
-    const country = reverseGeocode[0]?.country || "";
-    const fullCity = `${cityName}, ${country}`;
-
-    setDeviceCity(fullCity);
-    setLocationCoords({ lat: coords.latitude, lon: coords.longitude });
-
-    const safeEmail = getSafeEmail(currentUser.email);
-    const db = getDatabase();
-
-    await set(ref(db, `users/${safeEmail}/location`), {
-      city: fullCity,
-      lat: coords.latitude,
-      lon: coords.longitude,
-    });
-
-    Alert.alert("Succes", `Locația a fost setată automat: ${fullCity}`);
-  } catch (error) {
-    console.error("Eroare la obținerea locației:", error);
-    Alert.alert("Eroare", "Nu s-a putut obține locația curentă.");
-  } finally {
-    setIsLocating(false); // Dezactivează indicatorul
-  }
-};
+  };
 
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
@@ -274,16 +281,16 @@ const handleLocationButtonPress = async () => {
                 }}
               />
               <TouchableOpacity
-  onPress={handleLocationButtonPress}
-  style={styles.locationButton}
-  disabled={isLocating}
->
-  {isLocating ? (
-    <ActivityIndicator size="small" color="white" />
-  ) : (
-    <Entypo name="location" size={20} color="white" />
-  )}
-</TouchableOpacity>
+                onPress={handleLocationButtonPress}
+                style={styles.locationButton}
+                disabled={isLocating}
+              >
+                {isLocating ? (
+                  <ActivityIndicator size="small" color="white" />
+                ) : (
+                  <Entypo name="location" size={20} color="white" />
+                )}
+              </TouchableOpacity>
             </View>
 
             {showSuggestions && suggestions.length > 0 && (
@@ -367,13 +374,13 @@ const styles = {
     fontSize: 18,
     fontFamily: "Poppins",
   },
-locationButton: {
-  backgroundColor: Colors.GREEN,
-  borderRadius: 20,
-  width: 40,
-  height: 40,
-  justifyContent: "center",
-  alignItems: "center",
-  marginLeft: 10,
-},
+  locationButton: {
+    backgroundColor: Colors.GREEN,
+    borderRadius: 20,
+    width: 40,
+    height: 40,
+    justifyContent: "center",
+    alignItems: "center",
+    marginLeft: 10,
+  },
 };

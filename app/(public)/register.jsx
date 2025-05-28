@@ -5,7 +5,7 @@ import { auth } from '../../functions/FirebaseConfig';
 
 import Spinner from 'react-native-loading-spinner-overlay';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { Colors } from '../constants/Colors';
+import { Colors } from '../../constants/Colors';
 import { Link } from 'expo-router';
 import { Pressable } from 'react-native';
 
@@ -125,7 +125,7 @@ const Register = () => {
         </View>
 
         <View style={styles.group}>
-          <Text style={styles.label}>Parola</Text>
+          <Text style={styles.label}>Parolă</Text>
           <View style={styles.underlineContainer}>
             <Ionicons name="lock-open" size={24} color={Colors.DARKGREEN} style={{ marginRight: 8 }} />
             <TextInput
@@ -149,7 +149,7 @@ const Register = () => {
 
         {/* Confirm Password Input */}
         <View style={styles.group}>
-          <Text style={styles.label}>Reintrodu parola</Text>
+          <Text style={styles.label}>Confirmare parolă</Text>
           <View style={styles.underlineContainer}>
             <Ionicons name="lock-open" size={24} color={Colors.DARKGREEN} style={{ marginRight: 8 }} />
             <TextInput
@@ -177,7 +177,7 @@ const Register = () => {
 
         <View style={styles.group}>
           <TouchableOpacity style={styles.button} onPress={onSignUpPress}>
-            <Text style={styles.buttonText}>Creeaza contul</Text>
+            <Text style={styles.buttonText}>Creează contul</Text>
           </TouchableOpacity>
         </View>
 

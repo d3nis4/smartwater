@@ -4,8 +4,9 @@ import { Ionicons } from "@expo/vector-icons";
 import { getAuth } from "firebase/auth";
 import { getDatabase, ref, onValue } from "firebase/database";
 import { Colors
- } from "../constants/Colors";
-const Notifications = () => {
+ } from "../../constants/Colors";
+
+export default function  Notifications(){
   const auth = getAuth();
   const user = auth.currentUser;
   const [controls, setControls] = useState({});
@@ -146,40 +147,40 @@ const Notifications = () => {
     }
   };
   // ---------------
-  useEffect(() => {
-    if (weeklyWateringLogs.length > 0) {
-      let totalDurata = 0;
-      let totalIrigari = 0;
-      const irigariPeZi = {};
+useEffect(() => {
+  if (filteredData.length > 0) {
+    let totalDurata = 0;
+    let totalIrigari = 0;
+    const irigariPeZi = {};
 
-      weeklyWateringLogs.forEach((log) => {
-        irigariPeZi[log.date] = log.intervals.length;
-        totalIrigari += log.intervals.length;
+    filteredData.forEach((log) => {
+      irigariPeZi[log.date] = log.intervals.length;
+      totalIrigari += log.intervals.length;
 
-        log.intervals.forEach((interval) => {
-          const [start, end] = interval.split("-");
-          const durata = calculateDurationMinutes(start, end);
-          if (durata > 0) {
-            totalDurata += durata;
-          }
-        });
+      log.intervals.forEach((interval) => {
+        const [start, end] = interval.split("-");
+        const durata = calculateDurationMinutes(start, end);
+        if (durata > 0) {
+          totalDurata += durata;
+        }
       });
+    });
 
-      const durataMedie = totalIrigari > 0 ? totalDurata / totalIrigari : 0;
-      const ziMaxIrigari = Object.entries(irigariPeZi).sort(
-        (a, b) => b[1] - a[1]
-      )[0]?.[0];
+    const durataMedie = totalIrigari > 0 ? totalDurata / totalIrigari : 0;
+    const ziMaxIrigari = Object.entries(irigariPeZi).sort(
+      (a, b) => b[1] - a[1]
+    )[0]?.[0];
 
-      setStats({
-        totalIrigari,
-        durataTotala: totalDurata,
-        durataMedie: durataMedie.toFixed(1),
-        ziMaxIrigari,
-      });
-    } else {
-      setStats(null);
-    }
-  }, [weeklyWateringLogs]);
+    setStats({
+      totalIrigari,
+      durataTotala: totalDurata,
+      durataMedie: durataMedie.toFixed(1),
+      ziMaxIrigari,
+    });
+  } else {
+    setStats(null);
+  }
+}, [filteredData]);
 
   const calculateDurationMinutes = (startTime, endTime) => {
     const [startHour, startMinute] = startTime.split(":").map(Number);
@@ -294,7 +295,7 @@ const Notifications = () => {
           <TouchableOpacity
             key={days}
             style={{
-              backgroundColor: selectedRange === days ? "rgba(240, 187, 120, 1)" : "rgb(255, 255, 255)",
+              backgroundColor: selectedRange === days ? Colors.GREEN: "rgb(255, 255, 255)",
               padding: 8,
               borderRadius: 8,
               marginHorizontal: 5,
@@ -303,7 +304,7 @@ const Notifications = () => {
           >
             <Text
               style={{
-                color: selectedRange === days ? "rgba(255, 255, 255, 0.87))" : "rgba(240, 187, 120, 1)",
+                color: selectedRange === days ? "rgba(255, 255, 255, 0.87))" : Colors.GREEN,
                 fontWeight: "bold",
               }}
             >
@@ -313,18 +314,18 @@ const Notifications = () => {
         ))}
       </View>
 
-      {weeklyWateringLogs.length > 0 ? (
-        weeklyWateringLogs.map((log, index) => (
+      {filteredData.length  > 0 ? (
+        filteredData.map((log, index) => (
           <View key={index} style={styles.lastActivation}>
             <View style={styles.activationInfo}>
-              <Ionicons name="calendar" size={20} color="rgba(0, 54, 10, 0.43)"  />
+              <Ionicons name="calendar" size={20} color={Colors.GREEN}   />
               <Text style={styles.activationText}>
                 {formatDateReadable(log.date)}
               </Text>
             </View>
 
             <View style={styles.activationInfo}>
-              <Ionicons name="time" size={20} color="rgba(240, 187, 120, 1)" />
+              <Ionicons name="time" size={20} color={Colors.GREEN} />
               <View style={{ marginLeft: 8 }}>
                 <Text style={styles.label}>Intervale de irigare:</Text>
                 {log.intervals.length > 0 ? (
@@ -454,7 +455,7 @@ const styles = StyleSheet.create({
   activationText: {
    fontWeight:'bold',
     fontSize: 16,
-    color: "#333",
+    color:Colors.DARKGREEN,
     marginLeft: 10,
   },
   bullet: {
@@ -472,4 +473,3 @@ const styles = StyleSheet.create({
 });
 
 
-export default Notifications;
