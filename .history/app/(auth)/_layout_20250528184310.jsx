@@ -6,7 +6,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../../functions';
 import { useEffect } from 'react';
 import { useRouter } from 'expo-router';
-import { View } from 'react-native';
+
 export default function AuthLayout() {
   const { userLoggedIn } = useAuth();
   const router = useRouter();
@@ -40,10 +40,7 @@ export default function AuthLayout() {
 //     style={{ flex: 1 }}
 //   />
 // ),
-  tabBarBackground: () => (
-  <View style={{ flex: 1, backgroundColor: 'white' }} />
-),
-
+  
         tabBarItemStyle: { paddingVertical: 10 },
         tabBarActiveTintColor: '#000',
         tabBarInactiveTintColor: 'rgba(45, 45, 45, 0.56)',

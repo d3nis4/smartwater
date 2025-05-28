@@ -1015,12 +1015,12 @@ export default function Home(){
             </View>
           </View>
           {/* Adaugă logo-ul în partea dreaptă */}
-          {/* <Image
+          <Image
             source={require("../../assets/icons/logo.png")} // sau {uri: 'https://...'} pentru URL
             style={styles.logo}
           />
-        </View> */}
-      {/* </LinearGradient> */} 
+        </View>
+      </LinearGradient> */} */}
      
 
       { (

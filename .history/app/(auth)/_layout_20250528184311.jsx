@@ -6,7 +6,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../../functions';
 import { useEffect } from 'react';
 import { useRouter } from 'expo-router';
-import { View } from 'react-native';
+
 export default function AuthLayout() {
   const { userLoggedIn } = useAuth();
   const router = useRouter();

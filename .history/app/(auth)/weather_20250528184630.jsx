@@ -2162,7 +2162,7 @@ export default function  WeatherComponent(){
             </TouchableOpacity>
           </Modal>
         </View>
-      {/* </LinearGradient> */}
+      </LinearGradient>
     </View>
   );
 };

@@ -1020,7 +1020,7 @@ export default function Home(){
             style={styles.logo}
           />
         </View> */}
-      {/* </LinearGradient> */} 
+      </LinearGradient> */} */}
      
 
       { (

@@ -1002,25 +1002,27 @@ export default function Home(){
       {/* <LinearGradient
         colors={[Colors.DARKGREEN, Colors.WHITEGREEN]}
         style={styles.header}
-      >
+      > */}
+        <View style={[styles.header, { backgroundColor: 'green' }]} />
         <View style={styles.headerContent}>
           <View style={styles.userInfo}>
             {/* <Image
         source={{ uri: user?.imageUrl }}
         style={styles.userImage}
       /> */}
-            {/* <View>
+            <View>
               <Text style={styles.welcomeText}>Welcome back,</Text>
               <Text style={styles.userName}>{username} 🎉</Text>
             </View>
           </View>
           {/* Adaugă logo-ul în partea dreaptă */}
-          {/* <Image
+          <Image
             source={require("../../assets/icons/logo.png")} // sau {uri: 'https://...'} pentru URL
             style={styles.logo}
           />
-        </View> */}
-      {/* </LinearGradient> */} 
+        </View>
+        
+      {/* </LinearGradient> */}
      
 
       { (
