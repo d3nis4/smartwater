@@ -1,6 +1,6 @@
 import { View, Text, Image, StyleSheet, TouchableOpacity } from 'react-native'
 import React, { useEffect } from 'react'
-import { Colors } from '@/app/constants/Colors'
+import { Colors } from '../constants/Colors';
 import { Redirect, useRouter } from 'expo-router'
 
 import { Link } from 'expo-router';
@@ -37,10 +37,11 @@ export default function Index() {
           fontSize: 17,
           textAlign: 'center',
           color: Colors.GRAY,
-          marginTop: 20
+          marginTop: 20,
         }}
         >
-          Ești pregătit pentru o grădina inteligentă? Automatizează irigarea grădinii eonomisind timp și apă.
+          Ești pregătit pentru o grădina inteligentă? Automatizează irigarea grădinii 
+          {' '}eonomisind timp și apă.
         </Text>
 
         <Link href="/(public)/login" asChild>
