@@ -1,3 +1,0 @@
-runtime: python311
-service: sms
-entrypoint: gunicorn -b :$PORT app:app
