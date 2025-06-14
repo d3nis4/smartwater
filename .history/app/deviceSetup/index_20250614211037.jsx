@@ -571,12 +571,7 @@ const DeviceSetupScreen = () => {
         </View>
 
         {/* Afișează locația deja salvată */}
-        {savedLocation && (
-          <Text style={styles.label}>
-            Locație salvată: {savedLocation.city}
-          </Text>
-        )}
-
+      
         {/* Buton Trimitere */}
         <View style={styles.group}>
           <TouchableOpacity

@@ -427,7 +427,14 @@ const DeviceSetupScreen = () => {
                 <Text style={{ fontWeight: "bold" }}>nRF Connect</Text> din
                 Magazin Play.{"\n"}
                 2. Activează Bluetooth-ul pe telefon.{"\n"}
-             
+              </Text>
+              <Text>
+                {" "}
+                <MaterialCommunityIcons
+                  name="water"
+                  size={18}
+                  color={Colors.DARKGREEN}
+                />{" "}
                 3. Din listă, selectează dispozitivul{" "}
                 <Text style={styles.highlightText}>"SmartWater"{"\n"}</Text>
                 4. Apasă butonul microcontrolerului — se va aprinde un{" "}
@@ -441,7 +448,14 @@ const DeviceSetupScreen = () => {
               </Text>
             </View>
 
-         
+            <View style={styles.instructionItem}>
+              <MaterialCommunityIcons
+                name="water"
+                size={18}
+                color={Colors.DARKGREEN}
+              />
+            </View>
+
             <TouchableOpacity
               style={styles.closeButton}
               onPress={() => setModalVisible(false)}

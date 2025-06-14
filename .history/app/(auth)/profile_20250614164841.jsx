@@ -78,7 +78,7 @@ export default function Profile() {
       await doSignOut();
       router.replace("/");
     } catch (error) {
-      // console.error("Eroare la deconectare:", error);
+      console.error("Eroare la deconectare:", error);
     }
   };
 

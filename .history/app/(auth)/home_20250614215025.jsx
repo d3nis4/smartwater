@@ -424,109 +424,109 @@ export default function Home() {
     }
   };
 
-  const saveSettings = async () => {
-    if (!user?.email) return;
+const saveSettings = async () => {
+  if (!user?.email) return;
 
-    const days = [
-      "Luni",
-      "Marti",
-      "Miercuri",
-      "Joi",
-      "Vineri",
-      "Sambata",
-      "Duminica",
-    ];
+  const days = [
+    "Luni",
+    "Marti",
+    "Miercuri",
+    "Joi",
+    "Vineri",
+    "Sambata",
+    "Duminica",
+  ];
 
-    for (let i = 0; i < schedule.length; i++) {
-      const timeSlots = schedule[i].timeSlots;
+  for (let i = 0; i < schedule.length; i++) {
+    const timeSlots = schedule[i].timeSlots;
 
-      for (let j = 0; j < timeSlots.length; j++) {
-        const { startTime, endTime } = timeSlots[j];
+    for (let j = 0; j < timeSlots.length; j++) {
+      const { startTime, endTime } = timeSlots[j];
 
-        if (!startTime || !endTime) {
-          Alert.alert(
-            "Interval incomplet",
-            `Te rog să completezi toate orele pentru ziua ${days[i]}.`
-          );
-          return;
-        }
+      if (!startTime || !endTime) {
+        Alert.alert(
+          "Interval incomplet",
+          `Te rog să completezi toate orele pentru ziua ${days[i]}.`
+        );
+        return;
+      }
 
-        const startMinutes = timeToMinutes(startTime);
-        const endMinutes = timeToMinutes(endTime);
-        const interval = `${startTime} - ${endTime}`;
+      const startMinutes = timeToMinutes(startTime);
+      const endMinutes = timeToMinutes(endTime);
+      const interval = `${startTime} - ${endTime}`;
 
-        if (startMinutes === endMinutes) {
-          Alert.alert(`${days[i]}`, `Intervalul ${interval} nu este valid.`);
-          return;
-        }
+      if (startMinutes === endMinutes) {
+        Alert.alert(`${days[i]}`, `Intervalul ${interval} nu este valid.`);
+        return;
+      }
 
-        const duration =
-          endMinutes >= startMinutes
-            ? endMinutes - startMinutes
-            : 1440 - startMinutes + endMinutes;
+      const duration = endMinutes >= startMinutes
+        ? endMinutes - startMinutes
+        : 1440 - startMinutes + endMinutes;
 
-        if (duration < 1) {
-          Alert.alert(
-            `${days[i]}`,
-            `Intervalul de irigare ${interval} trebuie să dureze cel puțin 1 minut.`
-          );
-          return;
-        }
+      if (duration < 1) {
+        Alert.alert(
+          `${days[i]}`,
+          `Intervalul de irigare ${interval} trebuie să dureze cel puțin 1 minut.`
+        );
+        return;
+      }
 
-        if (duration > 120) {
-          Alert.alert(
-            `${days[i]}`,
-            `Irigarea nu poate dura mai mult de 2 ore (${interval}).`
-          );
-          return;
-        }
+      if (duration > 120) {
+        Alert.alert(
+          `${days[i]}`,
+          `Irigarea nu poate dura mai mult de 2 ore (${interval}).`
+        );
+        return;
       }
     }
+  }
 
-    try {
-      const userRef = ref(db, `users/${safeEmail}`);
+  try {
+    const userRef = ref(db, `users/${safeEmail}`);
 
-      await update(userRef, {
-        controls: {
-          pumpMode,
-          pumpStatus,
-          pragUmiditate: autoThreshold,
-        },
-        program: {
-          Luni: schedule[0].timeSlots.map(
-            (slot) => `${slot.startTime}-${slot.endTime}`
-          ),
-          Marti: schedule[1].timeSlots.map(
-            (slot) => `${slot.startTime}-${slot.endTime}`
-          ),
-          Miercuri: schedule[2].timeSlots.map(
-            (slot) => `${slot.startTime}-${slot.endTime}`
-          ),
-          Joi: schedule[3].timeSlots.map(
-            (slot) => `${slot.startTime}-${slot.endTime}`
-          ),
-          Vineri: schedule[4].timeSlots.map(
-            (slot) => `${slot.startTime}-${slot.endTime}`
-          ),
-          Sambata: schedule[5].timeSlots.map(
-            (slot) => `${slot.startTime}-${slot.endTime}`
-          ),
-          Duminica: schedule[6].timeSlots.map(
-            (slot) => `${slot.startTime}-${slot.endTime}`
-          ),
-        },
-        lastUpdated: Date.now(),
-      });
+    await update(userRef, {
+      controls: {
+        pumpMode,
+        pumpStatus,
+        pragUmiditate: autoThreshold,
+      },
+      program: {
+        Luni: schedule[0].timeSlots.map(
+          (slot) => `${slot.startTime}-${slot.endTime}`
+        ),
+        Marti: schedule[1].timeSlots.map(
+          (slot) => `${slot.startTime}-${slot.endTime}`
+        ),
+        Miercuri: schedule[2].timeSlots.map(
+          (slot) => `${slot.startTime}-${slot.endTime}`
+        ),
+        Joi: schedule[3].timeSlots.map(
+          (slot) => `${slot.startTime}-${slot.endTime}`
+        ),
+        Vineri: schedule[4].timeSlots.map(
+          (slot) => `${slot.startTime}-${slot.endTime}`
+        ),
+        Sambata: schedule[5].timeSlots.map(
+          (slot) => `${slot.startTime}-${slot.endTime}`
+        ),
+        Duminica: schedule[6].timeSlots.map(
+          (slot) => `${slot.startTime}-${slot.endTime}`
+        ),
+      },
+      lastUpdated: Date.now(),
+    });
 
-      setSavedPumpMode(pumpMode);
-      setSavedAutoThreshold(autoThreshold);
-      setSavedSchedule(schedule);
+    setSavedPumpMode(pumpMode);
+    setSavedAutoThreshold(autoThreshold);
+    setSavedSchedule(schedule);
 
-      Alert.alert("Succes", "Setările au fost salvate cu succes!");
-    } catch (error) {
-      Alert.alert("Eroare", "A apărut o eroare la salvarea setărilor.");
-    }
-  };
+    Alert.alert("Succes", "Setările au fost salvate cu succes!");
+  } catch (error) {
+    Alert.alert("Eroare", "A apărut o eroare la salvarea setărilor.");
+  }
+};
+
 
   const toggleDay = (dayIndex) => {
     setScheduledDays((prev) =>

@@ -25,7 +25,7 @@ import {
   Ionicons,
 } from "@expo/vector-icons";
 import * as Location from "expo-location";
-import { getDatabase, ref, set, get, onValue, off } from "firebase/database";
+import { getDatabase, ref, set, get,onValue,off} from "firebase/database";
 import { useRouter } from "expo-router";
 import { BackHandler } from "react-native";
 
@@ -131,6 +131,8 @@ const DeviceSetupScreen = () => {
         lon: locationCoords.lon,
       });
 
+     
+
       // Alert.alert("Succes", "Locația și numărul de telefon au fost salvate!");
       fetchSavedLocation();
     } catch (err) {
@@ -184,7 +186,7 @@ const DeviceSetupScreen = () => {
     }
     return true;
   };
-  useEffect(() => {
+useEffect(() => {
     if (bleConfigSent && user?.email) {
       const db = getDatabase();
       const connectionStatusRef = ref(
@@ -215,7 +217,7 @@ const DeviceSetupScreen = () => {
                   // This callback runs AFTER the user presses OK
                   setIsConnecting(false);
                   setBleConfigSent(false); // Reset this after user acknowledges
-                  router.replace("/home");
+                  router.replace('/home');
                 },
               },
             ]
@@ -236,6 +238,7 @@ const DeviceSetupScreen = () => {
       };
     }
   }, [bleConfigSent, user?.email, safeEmail, router]);
+
 
   const handleConfigureDevice = async () => {
     try {
@@ -348,6 +351,7 @@ const DeviceSetupScreen = () => {
       return;
     }
 
+
     await handleConfigureDevice();
   };
 
@@ -416,32 +420,39 @@ const DeviceSetupScreen = () => {
               />
               <Text style={styles.instructionTitle}>Înainte de a continua</Text>
             </View>
-            <View style={styles.instructionItem}>
-              <MaterialIcons
-                name="bluetooth"
-                size={18}
-                color={Colors.DARKGREEN}
-              />
-              <Text style={styles.instructionText}>
-                1. Instalează aplicația{" "}
-                <Text style={{ fontWeight: "bold" }}>nRF Connect</Text> din
-                Magazin Play.{"\n"}
-                2. Activează Bluetooth-ul pe telefon.{"\n"}
-             
-                3. Din listă, selectează dispozitivul{" "}
-                <Text style={styles.highlightText}>"SmartWater"{"\n"}</Text>
-                4. Apasă butonul microcontrolerului — se va aprinde un{" "}
-                <Text style={{ color: "blue", fontFamily: "poppins-bold" }}>
-                  bec albastru
-                </Text>
-                .{"\n"}
-                5. În aplicație, apasă „Connect”, apoi „Bond”.{"\n"}
-                6. În timpul conectării Wi-Fi, becul clipește. Dacă se
-                conectează, rămâne aprins. Dacă nu, încearcă din nou.
-              </Text>
-            </View>
+<View style={styles.instructionItem}>
+  <MaterialIcons
+    name="bluetooth"
+    size={18}
+    color={Colors.DARKGREEN}
+  />
+  <Text style={styles.instructionText}>
+    1. Instalează aplicația <Text style={{ fontWeight: "bold" }}>nRF Connect</Text> din Magazin Play.{"\n"}
+    2. Activează Bluetooth-ul pe telefon.{"\n"}
+</Text>
+    <Text> <MaterialCommunityIcons
+    name="water"
+    size={18}
+    color={Colors.DARKGREEN}
+  /> 3. Din listă, selectează dispozitivul <Text style={styles.highlightText}>"SmartWater"{"\n"}</Text>
 
-         
+    4. Apasă butonul microcontrolerului — se va aprinde un{" "}
+    <Text style={{ color: "blue", fontFamily: "poppins-bold" }}>bec albastru</Text>.{"\n"}
+    5. În aplicație, apasă „Connect”, apoi „Bond”.{"\n"}
+    6. În timpul conectării Wi-Fi, becul clipește. Dacă se conectează, rămâne aprins. Dacă nu, încearcă din nou.
+  </Text>
+</View>
+
+<View style={styles.instructionItem}>
+  <MaterialCommunityIcons
+    name="water"
+    size={18}
+    color={Colors.DARKGREEN}
+  />
+  
+</View>
+
+
             <TouchableOpacity
               style={styles.closeButton}
               onPress={() => setModalVisible(false)}
@@ -524,6 +535,7 @@ const DeviceSetupScreen = () => {
             </ScrollView>
           </View>
         )}
+     
 
         <View style={styles.group}>
           <Text style={styles.label}>Nume Wi-Fi</Text>

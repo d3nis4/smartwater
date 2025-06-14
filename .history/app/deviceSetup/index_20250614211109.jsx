@@ -573,7 +573,7 @@ const DeviceSetupScreen = () => {
         {/* Afișează locația deja salvată */}
         {savedLocation && (
           <Text style={styles.label}>
-            Locație salvată: {savedLocation.city}
+            {/* Locație salvată: {savedLocation.city} */}
           </Text>
         )}
 

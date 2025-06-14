@@ -120,7 +120,7 @@ export default function  WeatherComponent(){
       // Reîncarcă datele
       await loadLastCity(); // sau fetchWeatherData(...)
     } catch (e) {
-      // console.error("Refresh error:", e);
+      console.error("Refresh error:", e);
     } finally {
       setRefreshing(false);
     }
@@ -149,7 +149,7 @@ export default function  WeatherComponent(){
 
       // Assuming the data has a list field for extended forecast
     } catch (err) {
-      // console.error("Error fetching extended forecast:", err);
+      console.error("Error fetching extended forecast:", err);
     } finally {
       setLoading(false);
     }
@@ -192,7 +192,7 @@ export default function  WeatherComponent(){
 
       setWeather(weatherData);
     } catch (error) {
-      // console.error("Eroare la preluarea datelor:", error);
+      console.error("Eroare la preluarea datelor:", error);
     } finally {
       setLoading(false);
     }
@@ -236,7 +236,7 @@ export default function  WeatherComponent(){
       // 🔁 ADĂUGĂ: fetchExtendedForecastData
       await fetchExtendedForecastData(coords.latitude, coords.longitude);
     } catch (error) {
-      // console.error("Error getting location:", error);
+      console.error("Error getting location:", error);
     }
   };
 
@@ -248,7 +248,7 @@ export default function  WeatherComponent(){
 
         setLocations(locationData || []);
       } catch (error) {
-        // console.error("Error fetching locations:", error);
+        console.error("Error fetching locations:", error);
       }
     } else {
       setLocations([]);
@@ -291,7 +291,7 @@ export default function  WeatherComponent(){
         setSearchQuery("Bucuresti");
       }
     } catch (error) {
-      // console.error("Error loading last city:", error);
+      console.error("Error loading last city:", error);
     } finally {
       setLoading(false);
     }

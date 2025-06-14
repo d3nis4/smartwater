@@ -25,7 +25,7 @@ import {
   Ionicons,
 } from "@expo/vector-icons";
 import * as Location from "expo-location";
-import { getDatabase, ref, set, get, onValue, off } from "firebase/database";
+import { getDatabase, ref, set, get,onValue,off} from "firebase/database";
 import { useRouter } from "expo-router";
 import { BackHandler } from "react-native";
 
@@ -75,7 +75,7 @@ const DeviceSetupScreen = () => {
       setSuggestions(data);
       setShowSuggestions(true);
     } catch (err) {
-      // console.error("Eroare la fetch sugestii:", err);
+      console.error("Eroare la fetch sugestii:", err);
     }
   };
   const handleLocationButtonPress = async () => {
@@ -106,7 +106,7 @@ const DeviceSetupScreen = () => {
       setDeviceCity(fullCity);
       setLocationCoords({ lat: coords.latitude, lon: coords.longitude });
     } catch (error) {
-      // console.error("Eroare la obținerea locației:", error);
+      console.error("Eroare la obținerea locației:", error);
       Alert.alert("Eroare", "Nu s-a putut obține locația curentă.");
     } finally {
       setIsLocating(false);
@@ -131,10 +131,12 @@ const DeviceSetupScreen = () => {
         lon: locationCoords.lon,
       });
 
+     
+
       // Alert.alert("Succes", "Locația și numărul de telefon au fost salvate!");
       fetchSavedLocation();
     } catch (err) {
-      // console.error("Eroare la salvarea locației sau a numărului:", err);
+      console.error("Eroare la salvarea locației sau a numărului:", err);
       Alert.alert(
         "Eroare",
         "Nu s-a putut salva locația sau numărul de telefon."
@@ -155,7 +157,7 @@ const DeviceSetupScreen = () => {
         setSavedLocation(null);
       }
     } catch (err) {
-      // console.error("Eroare la preluarea locației salvate:", err);
+      console.error("Eroare la preluarea locației salvate:", err);
       setSavedLocation(null);
     }
   };
@@ -184,7 +186,7 @@ const DeviceSetupScreen = () => {
     }
     return true;
   };
-  useEffect(() => {
+useEffect(() => {
     if (bleConfigSent && user?.email) {
       const db = getDatabase();
       const connectionStatusRef = ref(
@@ -201,7 +203,7 @@ const DeviceSetupScreen = () => {
           try {
             set(ref(db, `users/${safeEmail}/deviceConfigured`), true);
           } catch (err) {
-            // console.error("Eroare la setarea deviceConfigured:", err);
+            console.error("Eroare la setarea deviceConfigured:", err);
           }
           saveDeviceLocation(); // Make sure this is also handled correctly
 
@@ -215,7 +217,7 @@ const DeviceSetupScreen = () => {
                   // This callback runs AFTER the user presses OK
                   setIsConnecting(false);
                   setBleConfigSent(false); // Reset this after user acknowledges
-                  router.replace("/home");
+                  router.replace('/home');
                 },
               },
             ]
@@ -236,6 +238,7 @@ const DeviceSetupScreen = () => {
       };
     }
   }, [bleConfigSent, user?.email, safeEmail, router]);
+
 
   const handleConfigureDevice = async () => {
     try {
@@ -320,7 +323,7 @@ const DeviceSetupScreen = () => {
         "Dispozitivul încearcă să se conecteze la Wi-Fi și Firebase..."
       );
     } catch (error) {
-      // console.error("BLE Error:", error);
+      console.error("BLE Error:", error);
       Alert.alert("Eroare", error.message || "A apărut o eroare la BLE");
     } finally {
       bleManager.stopDeviceScan();
@@ -347,6 +350,7 @@ const DeviceSetupScreen = () => {
       );
       return;
     }
+
 
     await handleConfigureDevice();
   };
@@ -416,6 +420,7 @@ const DeviceSetupScreen = () => {
               />
               <Text style={styles.instructionTitle}>Înainte de a continua</Text>
             </View>
+
             <View style={styles.instructionItem}>
               <MaterialIcons
                 name="bluetooth"
@@ -423,25 +428,36 @@ const DeviceSetupScreen = () => {
                 color={Colors.DARKGREEN}
               />
               <Text style={styles.instructionText}>
-                1. Instalează aplicația{" "}
-                <Text style={{ fontWeight: "bold" }}>nRF Connect</Text> din
-                Magazin Play.{"\n"}
-                2. Activează Bluetooth-ul pe telefon.{"\n"}
-             
-                3. Din listă, selectează dispozitivul{" "}
-                <Text style={styles.highlightText}>"SmartWater"{"\n"}</Text>
-                4. Apasă butonul microcontrolerului — se va aprinde un{" "}
-                <Text style={{ color: "blue", fontFamily: "poppins-bold" }}>
+              Instaelaza aplicatia nRF Connect for Mobile din Magazin Play pentru a putea 
+
+                Activează Bluetooth-ul pe telefon și apasă butonul
+                microcontrolerului, ar trebui să vezi un{" "}
+                <Text
+                  style={{
+                    color: "blue",
+                    fontFamily: "poppins-bold",
+                  }}
+                >
                   bec albastru
-                </Text>
-                .{"\n"}
-                5. În aplicație, apasă „Connect”, apoi „Bond”.{"\n"}
-                6. În timpul conectării Wi-Fi, becul clipește. Dacă se
-                conectează, rămâne aprins. Dacă nu, încearcă din nou.
+                </Text>{" "}
+                aprins. În timpul conectării Wi-Fi, becul clipește, iar dacă
+                configurarea a reușit, becul rămâne albastru. Altfel, se stinge
+                și trebuie să încerci din nou.
               </Text>
             </View>
 
-         
+            <View style={styles.instructionItem}>
+              <MaterialCommunityIcons
+                name="water"
+                size={18}
+                color={Colors.DARKGREEN}
+              />
+              <Text style={styles.instructionText}>
+                Selectează dispozitivul{" "}
+                <Text style={styles.highlightText}>"SmartWater"</Text>.
+              </Text>
+            </View>
+
             <TouchableOpacity
               style={styles.closeButton}
               onPress={() => setModalVisible(false)}
@@ -524,6 +540,7 @@ const DeviceSetupScreen = () => {
             </ScrollView>
           </View>
         )}
+     
 
         <View style={styles.group}>
           <Text style={styles.label}>Nume Wi-Fi</Text>

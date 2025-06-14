@@ -361,7 +361,7 @@ export default function Home() {
       }
     }
   };
-
+  
   const [pickerVisible, setPickerVisible] = useState(false);
   const [currentPicker, setCurrentPicker] = useState({
     dayIndex: null,
@@ -453,19 +453,20 @@ export default function Home() {
 
         const startMinutes = timeToMinutes(startTime);
         const endMinutes = timeToMinutes(endTime);
-        const interval = `${startTime} - ${endTime}`;
+
+        const interval = `${timeSlots[j].startTime} - ${timeSlots[j].endTime}`;
 
         if (startMinutes === endMinutes) {
           Alert.alert(`${days[i]}`, `Intervalul ${interval} nu este valid.`);
           return;
         }
 
-        const duration =
-          endMinutes >= startMinutes
-            ? endMinutes - startMinutes
-            : 1440 - startMinutes + endMinutes;
+        if (startMinutes >= endMinutes) {
+          Alert.alert(`${days[i]}`, `Intervalul ${interval} nu este valid.`);
+          return;
+        }
 
-        if (duration < 1) {
+        if (endMinutes - startMinutes < 1) {
           Alert.alert(
             `${days[i]}`,
             `Intervalul de irigare ${interval} trebuie să dureze cel puțin 1 minut.`
@@ -473,10 +474,10 @@ export default function Home() {
           return;
         }
 
-        if (duration > 120) {
+        if (endMinutes - startMinutes > 120) {
           Alert.alert(
             `${days[i]}`,
-            `Irigarea nu poate dura mai mult de 2 ore (${interval}).`
+            `Irigarea nu poate dura mai mult de 2 ore ${interval}. `
           );
           return;
         }
@@ -524,6 +525,7 @@ export default function Home() {
 
       Alert.alert("Succes", "Setările au fost salvate cu succes!");
     } catch (error) {
+      // console.error("Eroare la salvarea setărilor:", error);
       Alert.alert("Eroare", "A apărut o eroare la salvarea setărilor.");
     }
   };

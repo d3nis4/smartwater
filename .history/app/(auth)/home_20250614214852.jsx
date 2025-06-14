@@ -256,6 +256,8 @@ export default function Home() {
     }
   };
 
+
+
   const handlePumpStart = async () => {
     if (!user?.email) {
       // console.error("Nu există utilizator autentificat");
@@ -362,67 +364,58 @@ export default function Home() {
     }
   };
 
-  const [pickerVisible, setPickerVisible] = useState(false);
-  const [currentPicker, setCurrentPicker] = useState({
-    dayIndex: null,
-    slotIndex: null,
-    field: null,
-    initialPickerDate: new Date(), // default value
+ const showTimePicker = (dayIndex, slotIndex, fieldName) => {
+  const existingTimeString = schedule[dayIndex].timeSlots[slotIndex][fieldName];
+
+  let initialDateForPicker = new Date();
+
+  if (existingTimeString && existingTimeString !== "HH:MM") {
+    const [hours, minutes] = existingTimeString.split(":").map(Number);
+    initialDateForPicker.setHours(hours);
+    initialDateForPicker.setMinutes(minutes);
+    initialDateForPicker.setSeconds(0);
+    initialDateForPicker.setMilliseconds(0);
+  }
+
+  setCurrentPicker({
+    dayIndex,
+    slotIndex,
+    field: fieldName,
+    initialPickerDate: initialDateForPicker,
   });
 
-  const showTimePicker = (dayIndex, slotIndex, fieldName) => {
-    const existingTimeString =
-      schedule[dayIndex].timeSlots[slotIndex][fieldName];
+  setPickerVisible(true);
+};
 
-    let initialDateForPicker = new Date();
+const onTimeSelected = (event, selectedDate) => {
+  if (event.type === "set" && selectedDate) {
+    const hours = selectedDate.getHours().toString().padStart(2, "0");
+    const minutes = selectedDate.getMinutes().toString().padStart(2, "0");
+    const formattedTime = `${hours}:${minutes}`;
 
-    if (existingTimeString && existingTimeString !== "HH:MM") {
-      const [hours, minutes] = existingTimeString.split(":").map(Number);
-      initialDateForPicker.setHours(hours);
-      initialDateForPicker.setMinutes(minutes);
-      initialDateForPicker.setSeconds(0);
-      initialDateForPicker.setMilliseconds(0);
-    }
+    const { dayIndex, slotIndex, field } = currentPicker;
 
-    setCurrentPicker({
-      dayIndex,
-      slotIndex,
-      field: fieldName,
-      initialPickerDate: initialDateForPicker,
+    setSchedule((prevSchedule) => {
+      const newSchedule = [...prevSchedule];
+      const newDay = { ...newSchedule[dayIndex] };
+      const newTimeSlots = [...newDay.timeSlots];
+
+      newTimeSlots[slotIndex] = {
+        ...newTimeSlots[slotIndex],
+        [field]: formattedTime,
+      };
+
+      newDay.timeSlots = newTimeSlots;
+      newSchedule[dayIndex] = newDay;
+
+      return newSchedule;
     });
 
-    setPickerVisible(true);
-  };
-
-  const onTimeSelected = (event, selectedDate) => {
-    if (event.type === "set" && selectedDate) {
-      const hours = selectedDate.getHours().toString().padStart(2, "0");
-      const minutes = selectedDate.getMinutes().toString().padStart(2, "0");
-      const formattedTime = `${hours}:${minutes}`;
-
-      const { dayIndex, slotIndex, field } = currentPicker;
-
-      setSchedule((prevSchedule) => {
-        const newSchedule = [...prevSchedule];
-        const newDay = { ...newSchedule[dayIndex] };
-        const newTimeSlots = [...newDay.timeSlots];
-
-        newTimeSlots[slotIndex] = {
-          ...newTimeSlots[slotIndex],
-          [field]: formattedTime,
-        };
-
-        newDay.timeSlots = newTimeSlots;
-        newSchedule[dayIndex] = newDay;
-
-        return newSchedule;
-      });
-
-      setPickerVisible(false);
-    } else {
-      setPickerVisible(false);
-    }
-  };
+    setPickerVisible(false);
+  } else {
+    setPickerVisible(false);
+  }
+};
 
   const saveSettings = async () => {
     if (!user?.email) return;
@@ -453,19 +446,20 @@ export default function Home() {
 
         const startMinutes = timeToMinutes(startTime);
         const endMinutes = timeToMinutes(endTime);
-        const interval = `${startTime} - ${endTime}`;
+
+        const interval = `${timeSlots[j].startTime} - ${timeSlots[j].endTime}`;
 
         if (startMinutes === endMinutes) {
           Alert.alert(`${days[i]}`, `Intervalul ${interval} nu este valid.`);
           return;
         }
 
-        const duration =
-          endMinutes >= startMinutes
-            ? endMinutes - startMinutes
-            : 1440 - startMinutes + endMinutes;
+        if (startMinutes >= endMinutes) {
+          Alert.alert(`${days[i]}`, `Intervalul ${interval} nu este valid.`);
+          return;
+        }
 
-        if (duration < 1) {
+        if (endMinutes - startMinutes < 1) {
           Alert.alert(
             `${days[i]}`,
             `Intervalul de irigare ${interval} trebuie să dureze cel puțin 1 minut.`
@@ -473,10 +467,10 @@ export default function Home() {
           return;
         }
 
-        if (duration > 120) {
+        if (endMinutes - startMinutes > 120) {
           Alert.alert(
             `${days[i]}`,
-            `Irigarea nu poate dura mai mult de 2 ore (${interval}).`
+            `Irigarea nu poate dura mai mult de 2 ore ${interval}. `
           );
           return;
         }
@@ -524,6 +518,7 @@ export default function Home() {
 
       Alert.alert("Succes", "Setările au fost salvate cu succes!");
     } catch (error) {
+      // console.error("Eroare la salvarea setărilor:", error);
       Alert.alert("Eroare", "A apărut o eroare la salvarea setărilor.");
     }
   };
@@ -782,6 +777,7 @@ export default function Home() {
               </TouchableOpacity>
             </View>
 
+
             {/* Conținut în funcție de modul selectat */}
             {pumpMode === "manual" && (
               <View style={styles.pumpStatusContainer}>
@@ -874,6 +870,7 @@ export default function Home() {
                     "Sambata",
                     "Duminica",
                   ].map((day, index) => {
+                   
                     const hasSchedule = schedule[index].timeSlots.length > 0;
 
                     return (
@@ -945,12 +942,13 @@ export default function Home() {
                     ))}
                     {pickerVisible && (
                       <DateTimePicker
-                        value={currentPicker.initialPickerDate || new Date()}
-                        mode="time"
-                        is24Hour={true}
-                        display="default"
-                        onChange={onTimeSelected}
-                      />
+  value={currentPicker.initialPickerDate || new Date()}
+  mode="time"
+  is24Hour={true}
+  display="default"
+  onChange={onTimeSelected}
+/>
+
                     )}
 
                     {schedule[dayIndex].timeSlots.length < 3 && (

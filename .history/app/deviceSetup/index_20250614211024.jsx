@@ -571,11 +571,11 @@ const DeviceSetupScreen = () => {
         </View>
 
         {/* Afișează locația deja salvată */}
-        {savedLocation && (
+        {/* {savedLocation && (
           <Text style={styles.label}>
-            Locație salvată: {savedLocation.city}
+            {/* Locație salvată: {savedLocation.city} */}
           </Text>
-        )}
+        )} */]]*/</ScrollView>}
 
         {/* Buton Trimitere */}
         <View style={styles.group}>
