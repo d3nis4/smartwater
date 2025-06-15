@@ -37,7 +37,6 @@ import {
   fetchSavedLocation,
   getLocalWeatherImage,
   isDayTimeFromDateTime,
-  convertAMPMTo24H,
 } from "../../constants/functions";
 
 const getDynamicStyles = (tempC) =>
@@ -280,8 +279,10 @@ export default function WeatherComponent() {
     );
   }
 
-  const currentHourTime = new Date(); // Obiect Date cu ora locală
-
+  const currentHourTime = new Date()
+    .toISOString()
+    .slice(0, 19)
+    .replace("T", " ");
   const isDay = isDayTimeFromDateTime(
     currentHourTime,
     weather.forecast.forecastday
@@ -296,6 +297,7 @@ export default function WeatherComponent() {
   );
   const conditionTextTomorrow = tomorrowHour.condition.text;
 
+  // Adaugă " noaptea" dacă este noapte
   const conditionKeyTomorrow =
     isDayTimeTomorrow === "Zi"
       ? conditionTextTomorrow
@@ -999,9 +1001,7 @@ export default function WeatherComponent() {
                           Răsărit
                         </Text>
                         <Text style={[dynamicStyles.text, styles.sunTimeValue]}>
-                          {convertAMPMTo24H(
-                            weather.forecast.forecastday[0].astro.sunrise
-                          )}
+                          {weather?.forecast?.forecastday[0]?.astro?.sunrise}
                         </Text>
                       </View>
 
@@ -1020,9 +1020,7 @@ export default function WeatherComponent() {
                           Apus
                         </Text>
                         <Text style={[dynamicStyles.text, styles.sunTimeValue]}>
-                          {convertAMPMTo24H(
-                            weather.forecast.forecastday[0].astro.sunset
-                          )}
+                          {weather?.forecast?.forecastday[0]?.astro?.sunset}
                         </Text>
                       </View>
                     </View>
@@ -1662,9 +1660,7 @@ export default function WeatherComponent() {
                           Răsărit
                         </Text>
                         <Text style={[dynamicStyles.text, styles.sunTimeValue]}>
-                          {convertAMPMTo24H(
-                            weather.forecast.forecastday[1].astro.sunrise
-                          )}
+                          {weather?.forecast?.forecastday[1]?.astro?.sunrise}
                         </Text>
                       </View>
 
@@ -1682,9 +1678,7 @@ export default function WeatherComponent() {
                           Apus
                         </Text>
                         <Text style={[dynamicStyles.text, styles.sunTimeValue]}>
-                          {convertAMPMTo24H(
-                            weather.forecast.forecastday[1].astro.sunset
-                          )}
+                          {weather?.forecast?.forecastday[1]?.astro?.sunset}
                         </Text>
                       </View>
                     </View>

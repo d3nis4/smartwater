@@ -1,7 +1,8 @@
-import { useState, useEffect } from "react";
+import{ useState, useEffect } from "react";
 import {
   View,
   Text,
+
   Modal,
   TextInput,
   TouchableOpacity,
@@ -12,7 +13,7 @@ import {
   StyleSheet,
   ActivityIndicator,
   RefreshControl,
-  ImageBackground,
+  ImageBackground
 } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import Entypo from "@expo/vector-icons/Entypo";
@@ -23,22 +24,21 @@ import {
 } from "../../api/weather";
 import * as Progress from "react-native-progress";
 import * as Location from "expo-location"; // For location services
+
 import AsyncStorage from "@react-native-async-storage/async-storage"; // Import AsyncStorage
+
+
 import { Colors } from "../../constants/Colors";
 import { Card } from "react-native-paper";
 import MapView, { Marker } from "react-native-maps";
 import { UrlTile } from "react-native-maps";
 import { apiForecast, BASE_URL } from "../../constants/index";
+
 import TemperatureText from "../../constants/TemperatureText";
 import { weatherImages } from "../../api/weatherImages";
+
 import { Feather } from "@expo/vector-icons";
-import {
-  getBackgroundImage,
-  fetchSavedLocation,
-  getLocalWeatherImage,
-  isDayTimeFromDateTime,
-  convertAMPMTo24H,
-} from "../../constants/functions";
+import { getBackgroundImage,getLocalWeatherImage } from "../../constants/functions";
 
 const getDynamicStyles = (tempC) =>
   StyleSheet.create({
@@ -47,15 +47,84 @@ const getDynamicStyles = (tempC) =>
     },
   });
 
-export default function WeatherComponent() {
+function isDayTimeFromDateTime(dateTimeStr, forecastDays) {
+  const inputDate = new Date(dateTimeStr);
+  const hour = inputDate.getHours();
+
+  // Între 22:00 și 06:00 este noapte indiferent de răsărit/apus
+  if (hour >= 22 || hour < 6) {
+    return "Noapte";
+  }
+
+  // Construim string data locală pentru matching cu forecast
+  const inputDateStr = `${inputDate.getFullYear()}-${String(
+    inputDate.getMonth() + 1
+  ).padStart(2, "0")}-${String(inputDate.getDate()).padStart(2, "0")}`;
+
+  const matchingDay = forecastDays.find((day) => day.date === inputDateStr);
+
+  if (!matchingDay) {
+    // fallback dacă nu găsim ziua în forecast
+    return "Zi";
+  }
+
+  // Convertim ora răsăritului și apusului în format 24h
+  function convertTo24Hour(time12h) {
+    const [time, modifier] = time12h.split(" ");
+    let [hours, minutes] = time.split(":").map(Number);
+    if (modifier === "PM" && hours !== 12) hours += 12;
+    if (modifier === "AM" && hours === 12) hours = 0;
+    return { hours, minutes };
+  }
+
+  const sunriseTime = convertTo24Hour(matchingDay.astro.sunrise);
+  const sunsetTime = convertTo24Hour(matchingDay.astro.sunset);
+
+  const sunriseDate = new Date(
+    inputDate.getFullYear(),
+    inputDate.getMonth(),
+    inputDate.getDate(),
+    sunriseTime.hours,
+    sunriseTime.minutes
+  );
+  const sunsetDate = new Date(
+    inputDate.getFullYear(),
+    inputDate.getMonth(),
+    inputDate.getDate(),
+    sunsetTime.hours,
+    sunsetTime.minutes
+  );
+
+  if (inputDate >= sunriseDate && inputDate < sunsetDate) {
+    return "Zi";
+  } else {
+    return "Noapte";
+  }
+}
+
+export default function  WeatherComponent(){
   const [loading, setLoading] = useState(true);
   const [weather, setWeather] = useState({});
   const [location, setLocation] = useState(null);
+  const [showSearch, toggleSearch] = useState(false);
   const [locations, setLocations] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const [selectedHour, setSelectedHour] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+   
+      await loadLastCity(); 
+    } catch (e) {
+      
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   const [selectedDay, setSelectedDay] = useState("TODAY"); // Default to TODAY
   const [selectedForecast, setSelectedForecast] = useState(null);
@@ -89,6 +158,7 @@ export default function WeatherComponent() {
   const fetchWeatherData = async (cityName) => {
     setLoading(true);
     try {
+    
       const weatherData = await fetchWeatherForecast({ cityName });
 
       if (!weatherData) {
@@ -97,6 +167,7 @@ export default function WeatherComponent() {
 
       // console.log('Răspuns API:', weatherData);
 
+    
       const locationData = weatherData?.location;
       const lat = locationData?.lat;
       const lon = locationData?.lon;
@@ -105,6 +176,7 @@ export default function WeatherComponent() {
       const tomorrowForecast = weatherData?.forecast?.forecastday?.[1]?.day;
       const hourlyTomorrow = weatherData?.forecast?.forecastday?.[1]?.hour;
 
+     
       if (!lat || !lon) {
         const locationResults = await fetchLocations({ cityName });
 
@@ -191,71 +263,47 @@ export default function WeatherComponent() {
     await AsyncStorage.setItem("lastCity", city.name);
   };
 
-  const loadInitialWeather = async () => {
-    setLoading(true);
+  // Load the last searched city from AsyncStorage
+  const loadLastCity = async () => {
     try {
-      const userEmail = await AsyncStorage.getItem("userEmail");
-      const safeEmail = userEmail?.replace(/\./g, "_");
-
-      let loaded = false;
-
-      if (safeEmail) {
-        const savedLocation = await fetchSavedLocation(safeEmail);
-        if (savedLocation) {
-          const { city, lat, lon } = savedLocation;
-          const coords = `${lat},${lon}`;
+      setLoading(true);
+      const savedCity = await AsyncStorage.getItem("lastCity");
+      if (savedCity) {
+        if (savedCity.includes(",")) {
+          const [lat, lon] = savedCity.split(",");
           const weatherData = await fetchWeatherForecast({
-            cityName: coords,
+            cityName: savedCity,
             days: "7",
           });
+
           setWeather(weatherData);
-          setLocation({ lat, lon });
-          setSearchQuery(city);
+          setLocation({ lat: parseFloat(lat), lon: parseFloat(lon) });
+          setSearchQuery(weatherData.location.name || "Locație curentă");
+
+          // 👇 ADĂUGĂM ȘI AICI să aduci prognoza extinsă!
           await fetchExtendedForecastData(lat, lon);
-
-          // ✅ Salvează și local
-          await AsyncStorage.setItem("lastCity", coords);
-          loaded = true;
-        }
-      }
-
-      if (!loaded) {
-        const savedCity = await AsyncStorage.getItem("lastCity");
-        if (savedCity) {
-          if (savedCity.includes(",")) {
-            const [lat, lon] = savedCity.split(",");
-            const weatherData = await fetchWeatherForecast({
-              cityName: savedCity,
-              days: "7",
-            });
-
-            setWeather(weatherData);
-            setLocation({ lat: parseFloat(lat), lon: parseFloat(lon) });
-            setSearchQuery(weatherData.location.name || "Locație curentă");
-            await fetchExtendedForecastData(lat, lon);
-          } else {
-            await fetchWeatherData(savedCity);
-            setSearchQuery(savedCity);
-          }
         } else {
-          await fetchWeatherData("București");
-          setSearchQuery("București");
+          await fetchWeatherData(savedCity);
+          setSearchQuery(savedCity);
         }
+      } else {
+        await fetchWeatherData("Bucuresti");
+        setSearchQuery("Bucuresti");
       }
-    } catch (err) {
-      console.error("Eroare la încărcare inițială:", err);
+    } catch (error) {
+      // console.error("Error loading last city:", error);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadInitialWeather();
+    loadLastCity();
   }, []);
 
   const current = weather?.current;
   const locationData = weather?.location;
-
+  
   const dynamicStyles = getDynamicStyles(current?.temp_c);
 
   const now = new Date();
@@ -280,8 +328,10 @@ export default function WeatherComponent() {
     );
   }
 
-  const currentHourTime = new Date(); // Obiect Date cu ora locală
-
+  const currentHourTime = new Date()
+    .toISOString()
+    .slice(0, 19)
+    .replace("T", " ");
   const isDay = isDayTimeFromDateTime(
     currentHourTime,
     weather.forecast.forecastday
@@ -296,6 +346,7 @@ export default function WeatherComponent() {
   );
   const conditionTextTomorrow = tomorrowHour.condition.text;
 
+  // Adaugă " noaptea" dacă este noapte
   const conditionKeyTomorrow =
     isDayTimeTomorrow === "Zi"
       ? conditionTextTomorrow
@@ -307,26 +358,17 @@ export default function WeatherComponent() {
     uri: `https:${tomorrowHour.condition.icon}`,
   };
 
-  const backgroundImage = getBackgroundImage(current?.temp_c);
 
-  const onRefresh = async () => {
-    setRefreshing(true);
-    try {
-      await loadInitialWeather();
-    } catch (e) {
-      console.error("Eroare la reîmprospătare:", e);
-    } finally {
-      setRefreshing(false);
-    }
-  };
+ const backgroundImage = getBackgroundImage(current?.temp_c);
 
   return (
-    <ImageBackground
+      <ImageBackground
       source={backgroundImage}
       style={styles.container}
       resizeMode="cover"
     >
-      <View style={styles.container}>
+    <View style={styles.container}>
+    
         <StatusBar style="light" />
         <View style={styles.searchContainer}>
           <View style={styles.searchBar}>
@@ -348,6 +390,7 @@ export default function WeatherComponent() {
               style={styles.searchButton}
               onPress={() => {
                 if (searchQuery.trim()) {
+             
                   fetchWeatherData(searchQuery);
                   setLocations([]); // ascundem lista de sugestii
                 }
@@ -999,9 +1042,7 @@ export default function WeatherComponent() {
                           Răsărit
                         </Text>
                         <Text style={[dynamicStyles.text, styles.sunTimeValue]}>
-                          {convertAMPMTo24H(
-                            weather.forecast.forecastday[0].astro.sunrise
-                          )}
+                          {weather?.forecast?.forecastday[0]?.astro?.sunrise}
                         </Text>
                       </View>
 
@@ -1020,9 +1061,7 @@ export default function WeatherComponent() {
                           Apus
                         </Text>
                         <Text style={[dynamicStyles.text, styles.sunTimeValue]}>
-                          {convertAMPMTo24H(
-                            weather.forecast.forecastday[0].astro.sunset
-                          )}
+                          {weather?.forecast?.forecastday[0]?.astro?.sunset}
                         </Text>
                       </View>
                     </View>
@@ -1077,6 +1116,8 @@ export default function WeatherComponent() {
                       />
                     </MapView>
                   </Card>
+
+                
 
                   {/* ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////   */}
 
@@ -1145,6 +1186,7 @@ export default function WeatherComponent() {
                     flex: 1,
                     justifyContent: "center",
                     alignItems: "center",
+                  
                   }}
                 >
                   <Progress.CircleSnail
@@ -1161,11 +1203,7 @@ export default function WeatherComponent() {
                       onRefresh={onRefresh}
                     />
                   }
-                  style={{
-                    marginHorizontal: 16,
-                    marginTop: -40,
-                    marginBottom: 180,
-                  }}
+                  style={{ marginHorizontal: 16, marginTop: -40 ,  marginBottom:180 }}
                 >
                   {/* Location Info */}
                   <View
@@ -1662,9 +1700,7 @@ export default function WeatherComponent() {
                           Răsărit
                         </Text>
                         <Text style={[dynamicStyles.text, styles.sunTimeValue]}>
-                          {convertAMPMTo24H(
-                            weather.forecast.forecastday[1].astro.sunrise
-                          )}
+                          {weather?.forecast?.forecastday[1]?.astro?.sunrise}
                         </Text>
                       </View>
 
@@ -1682,14 +1718,13 @@ export default function WeatherComponent() {
                           Apus
                         </Text>
                         <Text style={[dynamicStyles.text, styles.sunTimeValue]}>
-                          {convertAMPMTo24H(
-                            weather.forecast.forecastday[1].astro.sunset
-                          )}
+                          {weather?.forecast?.forecastday[1]?.astro?.sunset}
                         </Text>
                       </View>
                     </View>
                   </View>
 
+              
                   {/* ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////   */}
                 </ScrollView>
               )}
@@ -1896,12 +1931,18 @@ export default function WeatherComponent() {
                       </View>
 
                       <View style={styles.detailItem}>
-                        <Feather name="cloud" size={18} color={Colors.GREEN} />
+                        <Feather
+                          name="cloud"
+                          size={18}
+                          color={Colors.GREEN}
+                        />
                         <Text style={styles.detailLabel}>Acperire nori</Text>
                         <Text style={styles.detailValue}>
                           {selectedForecast.cloud ?? 0}%
                         </Text>
                       </View>
+
+
                     </View>
 
                     {/* Close Button */}
@@ -1917,11 +1958,12 @@ export default function WeatherComponent() {
             </TouchableOpacity>
           </Modal>
         </View>
-        {/* </LinearGradient> */}
-      </View>
+      {/* </LinearGradient> */}
+    </View>
+
     </ImageBackground>
   );
-}
+};
 
 const styles = StyleSheet.create({
   container: {
@@ -2511,8 +2553,8 @@ const styles = StyleSheet.create({
   divider: {
     height: 1,
     backgroundColor: "#ECF0F1",
-    marginBottom: 10,
-    marginTop: -10,
+    marginBottom:10,
+    marginTop:-10
   },
   detailsContainer: {
     marginBottom: 16,
@@ -2546,11 +2588,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: Colors.PRIMARY,
   },
-  closeButtonText: {
-    fontSize: 16,
-    fontFamily: "poppins",
-    color: Colors.DARKGREEN,
-  },
+    closeButtonText: {
+      fontSize: 16,
+      fontFamily: "poppins",
+      color: Colors.DARKGREEN,
+    },
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0, 0, 0, 0.5)",
@@ -2575,3 +2617,5 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
 });
+
+

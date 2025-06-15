@@ -37,7 +37,6 @@ import {
   fetchSavedLocation,
   getLocalWeatherImage,
   isDayTimeFromDateTime,
-  convertAMPMTo24H,
 } from "../../constants/functions";
 
 const getDynamicStyles = (tempC) =>
@@ -280,7 +279,8 @@ export default function WeatherComponent() {
     );
   }
 
-  const currentHourTime = new Date(); // Obiect Date cu ora locală
+ const currentHour = new Date();
+const currentHourTime = `${currentHour.getFullYear()}-${String(currentHour.getMonth() + 1).padStart(2, "0")}-${String(currentHour.getDate()).padStart(2, "0")} ${String(currentHour.getHours()).padStart(2, "0")}:${String(currentHour.getMinutes()).padStart(2, "0")}:00`;
 
   const isDay = isDayTimeFromDateTime(
     currentHourTime,
@@ -296,6 +296,7 @@ export default function WeatherComponent() {
   );
   const conditionTextTomorrow = tomorrowHour.condition.text;
 
+  // Adaugă " noaptea" dacă este noapte
   const conditionKeyTomorrow =
     isDayTimeTomorrow === "Zi"
       ? conditionTextTomorrow
@@ -306,7 +307,14 @@ export default function WeatherComponent() {
   ][conditionKeyTomorrow] || {
     uri: `https:${tomorrowHour.condition.icon}`,
   };
-
+// *** ADD THESE LOGS ***
+console.log(`[Image Debug] isDayBool: ${isDayBool}`);
+console.log(`[Image Debug] weatherImages key: ${isDayBool ? "day" : "night"}`);
+console.log(`[Image Debug] conditionKey: "${conditionKey}"`);
+const foundCustomIcon = weatherImages[isDayBool ? "day" : "night"][conditionKey];
+console.log(`[Image Debug] Found custom icon: ${foundCustomIcon ? 'YES' : 'NO'}`);
+console.log(`[Image Debug] Final iconSource:`, iconSource);
+// *********************
   const backgroundImage = getBackgroundImage(current?.temp_c);
 
   const onRefresh = async () => {
@@ -999,9 +1007,7 @@ export default function WeatherComponent() {
                           Răsărit
                         </Text>
                         <Text style={[dynamicStyles.text, styles.sunTimeValue]}>
-                          {convertAMPMTo24H(
-                            weather.forecast.forecastday[0].astro.sunrise
-                          )}
+                          {weather?.forecast?.forecastday[0]?.astro?.sunrise}
                         </Text>
                       </View>
 
@@ -1020,9 +1026,7 @@ export default function WeatherComponent() {
                           Apus
                         </Text>
                         <Text style={[dynamicStyles.text, styles.sunTimeValue]}>
-                          {convertAMPMTo24H(
-                            weather.forecast.forecastday[0].astro.sunset
-                          )}
+                          {weather?.forecast?.forecastday[0]?.astro?.sunset}
                         </Text>
                       </View>
                     </View>
@@ -1662,9 +1666,7 @@ export default function WeatherComponent() {
                           Răsărit
                         </Text>
                         <Text style={[dynamicStyles.text, styles.sunTimeValue]}>
-                          {convertAMPMTo24H(
-                            weather.forecast.forecastday[1].astro.sunrise
-                          )}
+                          {weather?.forecast?.forecastday[1]?.astro?.sunrise}
                         </Text>
                       </View>
 
@@ -1682,9 +1684,7 @@ export default function WeatherComponent() {
                           Apus
                         </Text>
                         <Text style={[dynamicStyles.text, styles.sunTimeValue]}>
-                          {convertAMPMTo24H(
-                            weather.forecast.forecastday[1].astro.sunset
-                          )}
+                          {weather?.forecast?.forecastday[1]?.astro?.sunset}
                         </Text>
                       </View>
                     </View>

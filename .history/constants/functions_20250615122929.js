@@ -255,7 +255,7 @@ export const isDayTimeFromDateTime = (dateTime, forecastDays) => {
 };
 
 export const convertAMPMTo24H = (timeStr) => {
-  const [time, modifier] = timeStr.split(" "); 
+  const [time, modifier] = timeStr.split(" "); // ex: ["05:45", "AM"]
   let [hours, minutes] = time.split(":").map(Number);
 
   if (modifier === "PM" && hours !== 12) {

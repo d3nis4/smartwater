@@ -37,7 +37,6 @@ import {
   fetchSavedLocation,
   getLocalWeatherImage,
   isDayTimeFromDateTime,
-  convertAMPMTo24H,
 } from "../../constants/functions";
 
 const getDynamicStyles = (tempC) =>
@@ -280,7 +279,8 @@ export default function WeatherComponent() {
     );
   }
 
-  const currentHourTime = new Date(); // Obiect Date cu ora locală
+ const currentHour = new Date();
+const currentHourTime = `${currentHour.getFullYear()}-${String(currentHour.getMonth() + 1).padStart(2, "0")}-${String(currentHour.getDate()).padStart(2, "0")} ${String(currentHour.getHours()).padStart(2, "0")}:${String(currentHour.getMinutes()).padStart(2, "0")}:00`;
 
   const isDay = isDayTimeFromDateTime(
     currentHourTime,
@@ -288,6 +288,9 @@ export default function WeatherComponent() {
   );
   const conditionText = weather.current.condition.text;
   const forecastDays = weather?.forecast?.forecastday;
+console.log("▶️ Day/Night:", isDayTimeFromDateTime(currentHourTime, forecastDays));
+console.log("⏱️ currentHourTime:", currentHourTime);
+
 
   const tomorrowHour = forecastDays[1].hour[12]; // exemplu: ora 12 din ziua de mâine
   const isDayTimeTomorrow = isDayTimeFromDateTime(
@@ -296,16 +299,25 @@ export default function WeatherComponent() {
   );
   const conditionTextTomorrow = tomorrowHour.condition.text;
 
+  // Adaugă " noaptea" dacă este noapte
   const conditionKeyTomorrow =
     isDayTimeTomorrow === "Zi"
       ? conditionTextTomorrow
       : `${conditionTextTomorrow} noaptea`;
+const isDayTimeTomorrow = isDayTimeFromDateTime(
+  tomorrowHour.time,
+  forecastDays
+);
 
-  const iconSourceTomorrow = weatherImages[
-    isDayTimeTomorrow === "Zi" ? "day" : "night"
-  ][conditionKeyTomorrow] || {
-    uri: `https:${tomorrowHour.condition.icon}`,
-  };
+const isDayBoolTomorrow = isDayTimeTomorrow === "Zi";
+const conditionTextTomorrow = tomorrowHour.condition.text;
+const conditionKeyTomorrow = isDayBoolTomorrow
+  ? conditionTextTomorrow
+  : `${conditionTextTomorrow} noaptea`;
+
+ const iconSourceTomorrow = weatherImages[isDayBoolTomorrow ? "day" : "night"][conditionKeyTomorrow] || {
+  uri: `https:${tomorrowHour.condition.icon}`,
+};
 
   const backgroundImage = getBackgroundImage(current?.temp_c);
 
@@ -999,9 +1011,7 @@ export default function WeatherComponent() {
                           Răsărit
                         </Text>
                         <Text style={[dynamicStyles.text, styles.sunTimeValue]}>
-                          {convertAMPMTo24H(
-                            weather.forecast.forecastday[0].astro.sunrise
-                          )}
+                          {weather?.forecast?.forecastday[0]?.astro?.sunrise}
                         </Text>
                       </View>
 
@@ -1020,9 +1030,7 @@ export default function WeatherComponent() {
                           Apus
                         </Text>
                         <Text style={[dynamicStyles.text, styles.sunTimeValue]}>
-                          {convertAMPMTo24H(
-                            weather.forecast.forecastday[0].astro.sunset
-                          )}
+                          {weather?.forecast?.forecastday[0]?.astro?.sunset}
                         </Text>
                       </View>
                     </View>
@@ -1662,9 +1670,7 @@ export default function WeatherComponent() {
                           Răsărit
                         </Text>
                         <Text style={[dynamicStyles.text, styles.sunTimeValue]}>
-                          {convertAMPMTo24H(
-                            weather.forecast.forecastday[1].astro.sunrise
-                          )}
+                          {weather?.forecast?.forecastday[1]?.astro?.sunrise}
                         </Text>
                       </View>
 
@@ -1682,9 +1688,7 @@ export default function WeatherComponent() {
                           Apus
                         </Text>
                         <Text style={[dynamicStyles.text, styles.sunTimeValue]}>
-                          {convertAMPMTo24H(
-                            weather.forecast.forecastday[1].astro.sunset
-                          )}
+                          {weather?.forecast?.forecastday[1]?.astro?.sunset}
                         </Text>
                       </View>
                     </View>

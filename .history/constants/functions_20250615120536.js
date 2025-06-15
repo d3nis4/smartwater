@@ -1,5 +1,6 @@
 import { getDatabase, ref, get } from "firebase/database";
-import { weatherImages } from "../api/weatherImages";
+import { fetchExtendedForecast } from "../api/weather";
+
 /**
  * Convertește o adresă de email într-un format sigur pentru Firebase Database.
  * Înlocuiește caracterele "." și "@" cu "_".
@@ -97,7 +98,7 @@ export const calculateDuration = (startTime, endTime) => {
   const durationMinutes = endTotalMinutes - startTotalMinutes;
 
   if (durationMinutes <= 0) {
-    return ""; // dacă durata e 0 sau negativă, returnăm string gol
+    return "";  // dacă durata e 0 sau negativă, returnăm string gol
   }
 
   const hours = Math.floor(durationMinutes / 60);
@@ -107,15 +108,13 @@ export const calculateDuration = (startTime, endTime) => {
     return "O oră și un minut";
   }
   if (hours > 0 && minutes > 0) {
-    return `${hours} ${hours === 1 ? "oră" : "ore"} și ${minutes} ${
-      minutes === 1 ? "minut" : "minute"
-    }`;
+    return `${hours} ${hours === 1 ? "oră" : "ore"} și ${minutes} ${minutes === 1 ? "minut" : "minute"}`;
   } else if (hours > 0) {
     return `${hours} ${hours === 1 ? "oră" : "ore"}`;
   } else if (minutes > 0) {
     return `${minutes} ${minutes === 1 ? "minut" : "minute"}`;
   } else {
-    return ""; // pentru 0 minute, returnăm string gol
+    return "";  // pentru 0 minute, returnăm string gol
   }
 };
 
@@ -165,108 +164,127 @@ export const getTitleText = (selectedRange) => {
   }
 };
 
-export const getLocalWeatherImage = (iconCode) => {
-  const hourType = iconCode.includes("d") ? "day" : "night";
 
-  const iconMap = {
-    // 01: Clear sky
-    "01d": "Senin",
-    "01n": "Senin noaptea",
+  const getLocalWeatherImage = (iconCode) => {
+    const hourType = iconCode.includes("d") ? "day" : "night";
 
-    // 02: Few clouds
-    "02d": "Parțial noros",
-    "02n": "Parțial noros noaptea",
+    const iconMap = {
+      // 01: Clear sky
+      "01d": "Senin",
+      "01n": "Senin noaptea",
 
-    // 03: Scattered clouds
-    "03d": "Noros",
-    "03n": "Noros noaptea",
+      // 02: Few clouds
+      "02d": "Parțial noros",
+      "02n": "Parțial noros noaptea",
 
-    // 04: Broken clouds
-    "04d": "Cer acoperit",
-    "04n": "Cer acoperit noaptea",
+      // 03: Scattered clouds
+      "03d": "Noros",
+      "03n": "Noros noaptea",
 
-    // 09: Shower rain
-    "09d": "Ploi uşoare",
-    "09n": "Ploi uşoare noaptea",
+      // 04: Broken clouds
+      "04d": "Cer acoperit",
+      "04n": "Cer acoperit noaptea",
 
-    // 10: Rain
-    "10d": "Ploi moderate",
-    "10n": "Ploi moderate noaptea",
+      // 09: Shower rain
+      "09d": "Ploi uşoare",
+      "09n": "Ploi uşoare noaptea",
 
-    // 11: Thunderstorm
-    "11d": "Tunete în apropiere",
-    "11n": "Tunete în apropiere noaptea",
+      // 10: Rain
+      "10d": "Ploi moderate",
+      "10n": "Ploi moderate noaptea",
 
-    // 13: Snow
-    "13d": "Ninsori moderate",
-    "13n": "Ninsori moderate noaptea",
+      // 11: Thunderstorm
+      "11d": "Tunete în apropiere",
+      "11n": "Tunete în apropiere noaptea",
 
-    // 50: Mist
-    "50d": "Ceață",
-    "50n": "Ceață noaptea",
+      // 13: Snow
+      "13d": "Ninsori moderate",
+      "13n": "Ninsori moderate noaptea",
+
+      // 50: Mist
+      "50d": "Ceață",
+      "50n": "Ceață noaptea",
+    };
+
+    const weatherLabel = iconMap[iconCode] || "Senin"; // fallback la o imagine default
+    return weatherImages[hourType][weatherLabel];
   };
 
-  const weatherLabel = iconMap[iconCode] || "Senin"; // fallback la o imagine default
-  return weatherImages[hourType][weatherLabel];
+  export const getBackgroundImage = (tempC) => {
+  if (tempC >= 30) return require('../assets/background/hot.png');
+  if (tempC >= 20) return require('../assets/background/warm2.png');
+  if (tempC >= 10) return require('../assets/background/cool.png');
+  return require('../assets/background/cold.png');
 };
-
-export const getBackgroundImage = (tempC) => {
-  if (tempC >= 30) return require("../assets/background/hot.png");
-  if (tempC >= 20) return require("../assets/background/warm2.png");
-  if (tempC >= 10) return require("../assets/background/cool.png");
-  return require("../assets/background/cold.png");
-};
-
 export const isDayTimeFromDateTime = (dateTime, forecastDays) => {
-  const date = dateTime instanceof Date ? dateTime : new Date(dateTime);
-  const dateString = date.toISOString().split("T")[0]; // "yyyy-mm-dd"
+  const date = new Date(dateTime);
+  // Get date in YYYY-MM-DD format for matching with forecast data
+  const dateString = date.toISOString().split("T")[0];
 
+  // Find the relevant forecast day
   const forecastDay = forecastDays.find((day) => day.date === dateString);
-  if (
-    !forecastDay ||
-    !forecastDay.astro?.sunrise ||
-    !forecastDay.astro?.sunset
-  ) {
-    return "Zi"; // fallback
+
+  // Fallback: If no forecast data or astro data, assume "Zi"
+  if (!forecastDay || !forecastDay.astro) {
+    console.warn("Forecast or astro data not found for:", dateString, ". Falling back to 'Zi'.");
+    return "Zi";
   }
 
-  const convertTo24h = (timeStr) => {
-    const [time, modifier] = timeStr.split(" ");
-    let [hours, minutes] = time.split(":").map(Number);
-    if (modifier === "PM" && hours !== 12) hours += 12;
-    if (modifier === "AM" && hours === 12) hours = 0;
-    return { hours, minutes };
+  const timeToMinutes = (timeStr) => {
+    if (!timeStr) {
+      console.warn("Invalid time string provided to timeToMinutes:", timeStr);
+      return NaN; // Return NaN for invalid input
+    }
+    const parts = timeStr.match(/(\d+):(\d+)\s*(AM|PM)?/i); // More robust regex for time parsing
+
+    if (!parts) {
+      console.warn("Failed to parse time string:", timeStr);
+      return NaN;
+    }
+
+    let hours = parseInt(parts[1], 10);
+    const minutes = parseInt(parts[2], 10);
+    const modifier = parts[3] ? parts[3].toUpperCase() : ''; // AM/PM modifier
+
+    if (modifier === "PM" && hours !== 12) {
+      hours += 12;
+    } else if (modifier === "AM" && hours === 12) {
+      hours = 0; // 12 AM is 00 hours
+    }
+
+    return hours * 60 + minutes;
   };
 
-  const { hours: sunriseHours, minutes: sunriseMinutes } = convertTo24h(
-    forecastDay.astro.sunrise
-  );
-  const { hours: sunsetHours, minutes: sunsetMinutes } = convertTo24h(
-    forecastDay.astro.sunset
-  );
+  const sunriseMins = timeToMinutes(forecastDay.astro.sunrise);
+  const sunsetMins = timeToMinutes(forecastDay.astro.sunset);
 
-  const sunrise = new Date(date);
-  sunrise.setHours(sunriseHours, sunriseMinutes, 0, 0);
+  // Get current time in minutes for the given dateTime
+  const currentHours = date.getHours();
+  const currentMinutes = date.getMinutes();
+  const currentMins = currentHours * 60 + currentMinutes;
 
-  const sunset = new Date(date);
-  sunset.setHours(sunsetHours, sunsetMinutes, 0, 0);
+  console.log("--- Day/Night Check ---");
+  console.log("🕒 Given DateTime:", date.toISOString());
+  console.log("📅 Date for Forecast Lookup:", dateString);
+  console.log("🌄 Sunrise Time String:", forecastDay.astro.sunrise, "-> Minutes:", sunriseMins);
+  console.log("🌇 Sunset Time String:", forecastDay.astro.sunset, "-> Minutes:", sunsetMins);
+  console.log("⏱️ Current Time (HH:MM):", `${String(currentHours).padStart(2, '0')}:${String(currentMinutes).padStart(2, '0')}`, "-> Current Mins:", currentMins);
 
-  return date >= sunrise && date < sunset ? "Zi" : "Noapte";
-};
-
-export const convertAMPMTo24H = (timeStr) => {
-  const [time, modifier] = timeStr.split(" "); 
-  let [hours, minutes] = time.split(":").map(Number);
-
-  if (modifier === "PM" && hours !== 12) {
-    hours += 12;
-  }
-  if (modifier === "AM" && hours === 12) {
-    hours = 0;
+  // Handle cases where sunrise/sunset couldn't be parsed (NaN)
+  if (isNaN(sunriseMins) || isNaN(sunsetMins)) {
+    console.error("Sunrise or Sunset time could not be parsed. Defaulting to 'Zi'.");
+    return "Zi"; // Or throw an error, depending on desired behavior
   }
 
-  const hoursStr = hours.toString().padStart(2, "0");
-  const minutesStr = minutes.toString().padStart(2, "0");
-
-  return `${hoursStr}:${minutesStr}`;
+  // Determine if it's daytime
+  if (currentMins >= sunriseMins && currentMins < sunsetMins) {
+    console.log("Result: Zi");
+    return "Zi";
+  } else {
+    console.log("Result: Noapte");
+    return "Noapte";
+  }
 };
+
+
+

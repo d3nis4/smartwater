@@ -37,7 +37,7 @@ import {
   fetchSavedLocation,
   getLocalWeatherImage,
   isDayTimeFromDateTime,
-  convertAMPMTo24H,
+  convertAMPMTo24H
 } from "../../constants/functions";
 
 const getDynamicStyles = (tempC) =>
@@ -280,12 +280,10 @@ export default function WeatherComponent() {
     );
   }
 
-  const currentHourTime = new Date(); // Obiect Date cu ora locală
+const currentHourTime = new Date(); // Obiect Date cu ora locală
 
-  const isDay = isDayTimeFromDateTime(
-    currentHourTime,
-    weather.forecast.forecastday
-  );
+
+const isDay = isDayTimeFromDateTime(currentHourTime, weather.forecast.forecastday);
   const conditionText = weather.current.condition.text;
   const forecastDays = weather?.forecast?.forecastday;
 
@@ -295,6 +293,7 @@ export default function WeatherComponent() {
     forecastDays
   );
   const conditionTextTomorrow = tomorrowHour.condition.text;
+
 
   const conditionKeyTomorrow =
     isDayTimeTomorrow === "Zi"
@@ -999,9 +998,7 @@ export default function WeatherComponent() {
                           Răsărit
                         </Text>
                         <Text style={[dynamicStyles.text, styles.sunTimeValue]}>
-                          {convertAMPMTo24H(
-                            weather.forecast.forecastday[0].astro.sunrise
-                          )}
+                          {convertAMPMTo24H(weather.forecast.forecastday[0].astro.sunset)}
                         </Text>
                       </View>
 
@@ -1020,9 +1017,7 @@ export default function WeatherComponent() {
                           Apus
                         </Text>
                         <Text style={[dynamicStyles.text, styles.sunTimeValue]}>
-                          {convertAMPMTo24H(
-                            weather.forecast.forecastday[0].astro.sunset
-                          )}
+                          {convertAMPMTo24H(weather.forecast.forecastday[0].astro.sunset)}
                         </Text>
                       </View>
                     </View>
@@ -1211,17 +1206,17 @@ export default function WeatherComponent() {
                       paddingHorizontal: 20,
                     }}
                   >
-                    {/* Left side - Weather icon and info */}
-                    <View style={{ flex: 1 }}>
-                      {/* Weather icon and condition */}
-                      <View style={{ alignItems: "left" }}>
-                        <Image
-                          style={styles.weatherImage}
-                          source={iconSourceTomorrow}
-                          resizeMode="contain"
-                        />
+                      {/* Left side - Weather icon and info */}
+                      <View style={{ flex: 1 }}>
+                        {/* Weather icon and condition */}
+                        <View style={{ alignItems: "left" }}>
+                          <Image
+                            style={styles.weatherImage}
+                            source={iconSourceTomorrow}
+                            resizeMode="contain"
+                          />
+                        </View>
                       </View>
-                    </View>
 
                     {/* Right side - Temperature */}
                     <View style={{ alignItems: "flex-end", marginTop: 20 }}>
@@ -1662,9 +1657,7 @@ export default function WeatherComponent() {
                           Răsărit
                         </Text>
                         <Text style={[dynamicStyles.text, styles.sunTimeValue]}>
-                          {convertAMPMTo24H(
-                            weather.forecast.forecastday[1].astro.sunrise
-                          )}
+                          {weather?.forecast?.forecastday[1]?.astro?.sunrise}
                         </Text>
                       </View>
 
@@ -1682,9 +1675,7 @@ export default function WeatherComponent() {
                           Apus
                         </Text>
                         <Text style={[dynamicStyles.text, styles.sunTimeValue]}>
-                          {convertAMPMTo24H(
-                            weather.forecast.forecastday[1].astro.sunset
-                          )}
+                          {convertAMPMTo24H(weather.forecast.forecastday[1].astro.sunset)}
                         </Text>
                       </View>
                     </View>
