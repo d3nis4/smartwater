@@ -65,7 +65,6 @@ Proiectul este format din trei componente principale:
 ##  Structura Proiectului
 
 ```plaintext
-proiect/
 │
 ├── smartwater/                    #  Aplicația mobilă (React Native)
 │   ├── api/
